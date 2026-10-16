@@ -3,23 +3,26 @@ package com.applemusic.offline.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.applemusic.offline.data.model.Song
-import com.applemusic.offline.service.MediaPlaybackService
-import com.applemusic.offline.service.PlaybackState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class PlayerViewModel @Inject constructor(
-    private val playbackService: MediaPlaybackService
-) : ViewModel() {
+class PlayerViewModel @Inject constructor() : ViewModel() {
 
     // Estado do player
-    val playbackState: StateFlow<PlaybackState> = playbackService.playbackState
-    val currentSong: StateFlow<Song?> = playbackService.currentSong
-    val currentPosition: StateFlow<Long> = playbackService.currentPosition
-    val duration: StateFlow<Long> = playbackService.duration
+    private val _playbackState = MutableStateFlow<PlaybackState>(PlaybackState.Idle)
+    val playbackState: StateFlow<PlaybackState> = _playbackState.asStateFlow()
+
+    private val _currentSong = MutableStateFlow<Song?>(null)
+    val currentSong: StateFlow<Song?> = _currentSong.asStateFlow()
+
+    private val _currentPosition = MutableStateFlow(0L)
+    val currentPosition: StateFlow<Long> = _currentPosition.asStateFlow()
+
+    private val _duration = MutableStateFlow(0L)
+    val duration: StateFlow<Long> = _duration.asStateFlow()
 
     // Estado da UI
     private val _isShuffleEnabled = MutableStateFlow(false)
@@ -37,17 +40,22 @@ class PlayerViewModel @Inject constructor(
     fun playSongs(songs: List<Song>, startIndex: Int = 0) {
         _queue.value = songs
         _currentQueueIndex.value = startIndex
-        playbackService.playSongs(songs, startIndex)
+        _currentSong.value = songs.getOrNull(startIndex)
+        _playbackState.value = PlaybackState.Playing
+        // TODO: Integrar com MediaPlaybackService
     }
 
     fun playPause() {
-        playbackService.playPause()
+        _playbackState.value = when (_playbackState.value) {
+            is PlaybackState.Playing -> PlaybackState.Paused
+            else -> PlaybackState.Playing
+        }
     }
 
     fun skipToNext() {
         val nextIndex = (_currentQueueIndex.value + 1) % _queue.value.size
         _currentQueueIndex.value = nextIndex
-        playbackService.skipToNext()
+        _currentSong.value = _queue.value.getOrNull(nextIndex)
     }
 
     fun skipToPrevious() {
@@ -57,16 +65,15 @@ class PlayerViewModel @Inject constructor(
             _queue.value.size - 1
         }
         _currentQueueIndex.value = prevIndex
-        playbackService.skipToPrevious()
+        _currentSong.value = _queue.value.getOrNull(prevIndex)
     }
 
     fun seekTo(position: Long) {
-        playbackService.seekTo(position)
+        _currentPosition.value = position
     }
 
     fun toggleShuffle() {
         _isShuffleEnabled.value = !_isShuffleEnabled.value
-        playbackService.setShuffleMode(_isShuffleEnabled.value)
     }
 
     fun cycleRepeatMode() {
@@ -75,26 +82,8 @@ class PlayerViewModel @Inject constructor(
             RepeatMode.ALL -> RepeatMode.ONE
             RepeatMode.ONE -> RepeatMode.OFF
         }
-        playbackService.setRepeatMode(_repeatMode.value.toExoPlayerRepeatMode())
     }
 
-    fun addToQueue(song: Song) {
-        _queue.value = _queue.value + song
-    }
-
-    fun removeFromQueue(index: Int) {
-        if (index in _queue.value.indices) {
-            _queue.value = _queue.value.toMutableList().apply { removeAt(index) }
-        }
-    }
-
-    fun moveInQueue(fromIndex: Int, toIndex: Int) {
-        _queue.value = _queue.value.toMutableList().apply {
-            add(toIndex, removeAt(fromIndex))
-        }
-    }
-
-    // Formatação de tempo
     fun formatTime(ms: Long): String {
         val minutes = ms / 1000 / 60
         val seconds = ms / 1000 % 60
@@ -103,13 +92,5 @@ class PlayerViewModel @Inject constructor(
 }
 
 enum class RepeatMode {
-    OFF, ALL, ONE;
-
-    fun toExoPlayerRepeatMode(): Int {
-        return when (this) {
-            OFF -> androidx.media3.common.Player.REPEAT_MODE_OFF
-            ALL -> androidx.media3.common.Player.REPEAT_MODE_ALL
-            ONE -> androidx.media3.common.Player.REPEAT_MODE_ONE
-        }
-    }
+    OFF, ALL, ONE
 }
