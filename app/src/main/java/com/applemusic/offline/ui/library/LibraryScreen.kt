@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -20,7 +21,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.applemusic.offline.data.model.Song
-import com.applemusic.offline.ui.theme.ApplePink
 import com.applemusic.offline.ui.theme.AppleRed
 import com.applemusic.offline.viewmodel.LibraryViewModel
 
@@ -84,11 +84,6 @@ fun LibraryScreen(
                 onClick = { selectedTab = 2 },
                 text = { Text("Artists") }
             )
-            Tab(
-                selected = selectedTab == 3,
-                onClick = { selectedTab = 3 },
-                text = { Text("Playlists") }
-            )
         }
 
         // Conteúdo
@@ -100,7 +95,6 @@ fun LibraryScreen(
             )
             1 -> AlbumsView(songs = songs)
             2 -> ArtistsView(songs = songs)
-            3 -> PlaylistsView()
         }
     }
 }
@@ -146,11 +140,10 @@ fun SongsListView(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(songs.size) { index ->
-                val song = songs[index]
+            items(songs) { song ->
                 SongListItem(
                     song = song,
-                    onClick = { onSongClick(song, songs, index) }
+                    onClick = { onSongClick(song, songs, songs.indexOf(song)) }
                 )
             }
         }
@@ -230,7 +223,10 @@ fun AlbumsView(songs: List<Song>) {
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp)
     ) {
-        items(albums.entries.toList()) { (albumName, albumSongs) ->
+        items(albums.entries.toList()) { entry ->
+            val albumName = entry.key
+            val albumSongs = entry.value
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -277,7 +273,10 @@ fun ArtistsView(songs: List<Song>) {
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp)
     ) {
-        items(artists.entries.toList()) { (artistName, artistSongs) ->
+        items(artists.entries.toList()) { entry ->
+            val artistName = entry.key
+            val artistSongs = entry.value
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -313,19 +312,5 @@ fun ArtistsView(songs: List<Song>) {
                 }
             }
         }
-    }
-}
-
-@Composable
-fun PlaylistsView() {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = "No playlists yet",
-            style = MaterialTheme.typography.titleLarge,
-            color = Color(0xFF8E8E93)
-        )
     }
 }
