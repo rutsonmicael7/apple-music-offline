@@ -18,6 +18,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.applemusic.offline.data.model.Song
@@ -36,53 +37,60 @@ fun LibraryScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF1C1C1E))
+            .background(Color.Black)
     ) {
-        // Cabeçalho
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Library",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
-            )
+        // Cabeçalho estilo Apple Music
+        Text(
+            text = "Biblioteca",
+            style = MaterialTheme.typography.headlineLarge,
+            fontWeight = FontWeight.Bold,
+            color = Color.White,
+            fontSize = 34.sp,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+        )
 
-            IconButton(onClick = { /* Busca */ }) {
-                Icon(
-                    imageVector = Icons.Default.Search,
-                    contentDescription = "Search",
-                    tint = Color.White
-                )
-            }
-        }
-
-        // Tabs
+        // Tabs estilo Apple Music
         var selectedTab by remember { mutableStateOf(0) }
         TabRow(
             selectedTabIndex = selectedTab,
-            containerColor = Color(0xFF1C1C1E),
-            contentColor = Color.White
+            containerColor = Color.Black,
+            contentColor = Color.White,
+            indicator = { tabPositions ->
+                TabRowDefaults.Indicator(
+                    modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
+                    color = AppleRed
+                )
+            }
         ) {
             Tab(
                 selected = selectedTab == 0,
                 onClick = { selectedTab = 0 },
-                text = { Text("Songs") }
+                text = { 
+                    Text(
+                        "Músicas",
+                        fontWeight = if (selectedTab == 0) FontWeight.SemiBold else FontWeight.Normal
+                    ) 
+                }
             )
             Tab(
                 selected = selectedTab == 1,
                 onClick = { selectedTab = 1 },
-                text = { Text("Albums") }
+                text = { 
+                    Text(
+                        "Álbuns",
+                        fontWeight = if (selectedTab == 1) FontWeight.SemiBold else FontWeight.Normal
+                    ) 
+                }
             )
             Tab(
                 selected = selectedTab == 2,
                 onClick = { selectedTab = 2 },
-                text = { Text("Artists") }
+                text = { 
+                    Text(
+                        "Artistas",
+                        fontWeight = if (selectedTab == 2) FontWeight.SemiBold else FontWeight.Normal
+                    ) 
+                }
             )
         }
 
@@ -128,8 +136,14 @@ fun SongsListView(
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    text = "No songs found",
+                    text = "Nenhuma música encontrada",
                     style = MaterialTheme.typography.titleLarge,
+                    color = Color(0xFF8E8E93)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Adicione músicas ao seu dispositivo",
+                    style = MaterialTheme.typography.bodyMedium,
                     color = Color(0xFF8E8E93)
                 )
             }
@@ -138,7 +152,7 @@ fun SongsListView(
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             items(songs) { song ->
                 SongListItem(
@@ -162,11 +176,12 @@ fun SongListItem(
             .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        // Capa do álbum - estilo Apple Music (quadrada, cantos arredondados)
         Box(
             modifier = Modifier
-                .size(56.dp)
+                .size(50.dp)
                 .clip(RoundedCornerShape(8.dp))
-                .background(Color(0xFF2C2C2E)),
+                .background(Color(0xFF1C1C1E)),
             contentAlignment = Alignment.Center
         ) {
             if (song.albumArtUri != null) {
@@ -181,20 +196,22 @@ fun SongListItem(
                     imageVector = Icons.Default.MusicNote,
                     contentDescription = null,
                     tint = Color(0xFF8E8E93),
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(20.dp)
                 )
             }
         }
 
         Spacer(modifier = Modifier.width(12.dp))
 
+        // Informações da música
         Column(
             modifier = Modifier.weight(1f)
         ) {
             Text(
                 text = song.title,
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.bodyLarge,
                 color = Color.White,
+                fontSize = 16.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -202,15 +219,18 @@ fun SongListItem(
                 text = song.artist,
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color(0xFF8E8E93),
+                fontSize = 14.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
         }
 
+        // Duração
         Text(
             text = song.formattedDuration,
             style = MaterialTheme.typography.bodySmall,
-            color = Color(0xFF8E8E93)
+            color = Color(0xFF8E8E93),
+            fontSize = 12.sp
         )
     }
 }
@@ -235,29 +255,31 @@ fun AlbumsView(songs: List<Song>) {
             ) {
                 Box(
                     modifier = Modifier
-                        .size(56.dp)
+                        .size(50.dp)
                         .clip(RoundedCornerShape(8.dp))
-                        .background(Color(0xFF2C2C2E)),
+                        .background(Color(0xFF1C1C1E)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Default.Album,
                         contentDescription = null,
                         tint = Color(0xFF8E8E93),
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(20.dp)
                     )
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
                     Text(
                         text = albumName,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = Color.White
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = Color.White,
+                        fontSize = 16.sp
                     )
                     Text(
-                        text = "${albumSongs.size} songs",
+                        text = "${albumSongs.size} músicas",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color(0xFF8E8E93)
+                        color = Color(0xFF8E8E93),
+                        fontSize = 14.sp
                     )
                 }
             }
@@ -285,29 +307,31 @@ fun ArtistsView(songs: List<Song>) {
             ) {
                 Box(
                     modifier = Modifier
-                        .size(56.dp)
-                        .clip(RoundedCornerShape(28.dp))
-                        .background(Color(0xFF2C2C2E)),
+                        .size(50.dp)
+                        .clip(RoundedCornerShape(25.dp))
+                        .background(Color(0xFF1C1C1E)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Default.Person,
                         contentDescription = null,
                         tint = Color(0xFF8E8E93),
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(20.dp)
                     )
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Column {
                     Text(
                         text = artistName,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = Color.White
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = Color.White,
+                        fontSize = 16.sp
                     )
                     Text(
-                        text = "${artistSongs.size} songs",
+                        text = "${artistSongs.size} músicas",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color(0xFF8E8E93)
+                        color = Color(0xFF8E8E93),
+                        fontSize = 14.sp
                     )
                 }
             }
