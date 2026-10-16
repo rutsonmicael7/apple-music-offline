@@ -1,11 +1,9 @@
 package com.applemusic.offline.viewmodel
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import com.applemusic.offline.data.model.Song
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
@@ -42,7 +40,6 @@ class PlayerViewModel @Inject constructor() : ViewModel() {
         _currentQueueIndex.value = startIndex
         _currentSong.value = songs.getOrNull(startIndex)
         _playbackState.value = PlaybackState.Playing
-        // TODO: Integrar com MediaPlaybackService
     }
 
     fun playPause() {
@@ -89,6 +86,16 @@ class PlayerViewModel @Inject constructor() : ViewModel() {
         val seconds = ms / 1000 % 60
         return "%d:%02d".format(minutes, seconds)
     }
+}
+
+// Estados do player
+sealed class PlaybackState {
+    object Idle : PlaybackState()
+    object Playing : PlaybackState()
+    object Paused : PlaybackState()
+    object Buffering : PlaybackState()
+    object Ended : PlaybackState()
+    data class Error(val message: String) : PlaybackState()
 }
 
 enum class RepeatMode {
