@@ -13,13 +13,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.applemusic.offline.data.model.Song
 import com.applemusic.offline.ui.theme.AppleRed
+import com.applemusic.offline.viewmodel.SearchViewModel
 
 @Composable
 fun SearchScreen(
@@ -52,7 +52,6 @@ fun SearchScreen(
 
             Spacer(modifier = Modifier.width(8.dp))
 
-            // Campo de busca
             TextField(
                 value = searchQuery,
                 onValueChange = { viewModel.onQueryChange(it) },
@@ -96,9 +95,8 @@ fun SearchScreen(
             )
         }
 
-        // Conteúdo da busca
+        // Conteúdo
         if (searchQuery.isEmpty()) {
-            // Buscas recentes
             if (recentSearches.isNotEmpty()) {
                 Text(
                     text = "Recently Searched",
@@ -118,7 +116,6 @@ fun SearchScreen(
                     }
                 }
             } else {
-                // Estado vazio
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
@@ -138,17 +135,10 @@ fun SearchScreen(
                             style = MaterialTheme.typography.titleLarge,
                             color = Color(0xFF8E8E93)
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "Find songs, artists, albums",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color(0xFF8E8E93)
-                        )
                     }
                 }
             }
         } else {
-            // Resultados da busca
             if (searchResults.isEmpty()) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -217,7 +207,6 @@ fun SearchResultItem(
             .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Capa
         Box(
             modifier = Modifier
                 .size(48.dp)
