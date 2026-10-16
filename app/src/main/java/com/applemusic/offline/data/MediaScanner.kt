@@ -2,6 +2,7 @@ package com.applemusic.offline.data
 
 import android.content.ContentUris
 import android.content.Context
+import android.net.Uri
 import android.provider.MediaStore
 import com.applemusic.offline.data.model.Song
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -63,7 +64,6 @@ class MediaScanner @Inject constructor(
                 val year = cursor.getInt(yearColumn)
                 val dateAdded = cursor.getLong(dateAddedColumn)
 
-                // URI da capa do álbum
                 val albumArtUri = ContentUris.withAppendedId(
                     Uri.parse("content://media/external/audio/albumart"),
                     albumId
@@ -90,10 +90,5 @@ class MediaScanner @Inject constructor(
         }
 
         songs
-    }
-
-    suspend fun scanFolder(folderPath: String): List<Song> = withContext(Dispatchers.IO) {
-        // Implementação para escanear pasta específica
-        emptyList()
     }
 }
