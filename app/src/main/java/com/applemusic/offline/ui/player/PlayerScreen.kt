@@ -20,10 +20,10 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.applemusic.offline.data.model.Song
-import com.applemusic.offline.service.PlaybackState
 import com.applemusic.offline.ui.theme.ApplePink
 import com.applemusic.offline.ui.theme.AppleRed
 import com.applemusic.offline.viewmodel.PlayerViewModel
+import com.applemusic.offline.viewmodel.PlaybackState
 import com.applemusic.offline.viewmodel.RepeatMode
 
 @Composable
@@ -56,7 +56,7 @@ fun PlayerScreen(
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Cabeçalho com botão de fechar
+            // Cabeçalho
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -77,7 +77,7 @@ fun PlayerScreen(
                     color = Color.White
                 )
 
-                IconButton(onClick = { /* Menu */ }) {
+                IconButton(onClick = { }) {
                     Icon(
                         imageVector = Icons.Default.MoreVert,
                         contentDescription = "More",
@@ -88,7 +88,6 @@ fun PlayerScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Arte do álbum
             currentSong?.let { song ->
                 AlbumArtView(
                     song = song,
@@ -99,7 +98,6 @@ fun PlayerScreen(
 
                 Spacer(modifier = Modifier.height(32.dp))
 
-                // Informações da música
                 Text(
                     text = song.title,
                     style = MaterialTheme.typography.headlineSmall,
@@ -123,7 +121,6 @@ fun PlayerScreen(
 
                 Spacer(modifier = Modifier.height(32.dp))
 
-                // Barra de progresso
                 SeekBarView(
                     currentPosition = currentPosition,
                     duration = duration,
@@ -133,7 +130,6 @@ fun PlayerScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Controles de reprodução
                 PlayerControlsView(
                     isPlaying = playbackState is PlaybackState.Playing,
                     isShuffleEnabled = isShuffleEnabled,
@@ -145,7 +141,6 @@ fun PlayerScreen(
                     onRepeatToggle = { viewModel.cycleRepeatMode() }
                 )
             } ?: run {
-                // Estado vazio
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
@@ -179,7 +174,6 @@ fun AlbumArtView(
                 contentScale = ContentScale.Crop
             )
         } else {
-            // Placeholder com gradiente
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -257,7 +251,6 @@ fun PlayerControlsView(
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Shuffle
         IconButton(onClick = onShuffleToggle) {
             Icon(
                 imageVector = Icons.Default.Shuffle,
@@ -267,7 +260,6 @@ fun PlayerControlsView(
             )
         }
 
-        // Previous
         IconButton(onClick = onPrevious) {
             Icon(
                 imageVector = Icons.Default.SkipPrevious,
@@ -277,7 +269,6 @@ fun PlayerControlsView(
             )
         }
 
-        // Play/Pause
         FloatingActionButton(
             onClick = onPlayPause,
             modifier = Modifier.size(72.dp),
@@ -292,7 +283,6 @@ fun PlayerControlsView(
             )
         }
 
-        // Next
         IconButton(onClick = onNext) {
             Icon(
                 imageVector = Icons.Default.SkipNext,
@@ -302,7 +292,6 @@ fun PlayerControlsView(
             )
         }
 
-        // Repeat
         IconButton(onClick = onRepeatToggle) {
             Icon(
                 imageVector = when (repeatMode) {
