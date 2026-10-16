@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -23,6 +22,7 @@ import coil.compose.AsyncImage
 import com.applemusic.offline.data.model.Song
 import com.applemusic.offline.ui.theme.ApplePink
 import com.applemusic.offline.ui.theme.AppleRed
+import com.applemusic.offline.viewmodel.LibraryViewModel
 
 @Composable
 fun LibraryScreen(
@@ -138,12 +138,6 @@ fun SongsListView(
                     style = MaterialTheme.typography.titleLarge,
                     color = Color(0xFF8E8E93)
                 )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "Add music to your device",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color(0xFF8E8E93)
-                )
             }
         }
     } else {
@@ -175,7 +169,6 @@ fun SongListItem(
             .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Capa do álbum
         Box(
             modifier = Modifier
                 .size(56.dp)
@@ -202,7 +195,6 @@ fun SongListItem(
 
         Spacer(modifier = Modifier.width(12.dp))
 
-        // Informações da música
         Column(
             modifier = Modifier.weight(1f)
         ) {
@@ -222,7 +214,6 @@ fun SongListItem(
             )
         }
 
-        // Duração
         Text(
             text = song.formattedDuration,
             style = MaterialTheme.typography.bodySmall,
@@ -233,7 +224,6 @@ fun SongListItem(
 
 @Composable
 fun AlbumsView(songs: List<Song>) {
-    // Agrupar por álbum
     val albums = songs.groupBy { it.album }
 
     LazyColumn(
