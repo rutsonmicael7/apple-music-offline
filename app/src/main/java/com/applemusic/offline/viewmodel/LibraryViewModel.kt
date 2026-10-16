@@ -2,6 +2,7 @@ package com.applemusic.offline.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.applemusic.offline.data.MediaScanner
 import com.applemusic.offline.data.database.SongDao
 import com.applemusic.offline.data.model.Song
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -11,7 +12,8 @@ import javax.inject.Inject
 
 @HiltViewModel
 class LibraryViewModel @Inject constructor(
-    private val songDao: SongDao
+    private val songDao: SongDao,
+    private val mediaScanner: MediaScanner
 ) : ViewModel() {
 
     private val _songs = MutableStateFlow<List<Song>>(emptyList())
@@ -24,12 +26,20 @@ class LibraryViewModel @Inject constructor(
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
     init {
-        loadSongs()
+        refreshLibrary()
     }
 
-    private fun loadSongs() {
+    fun refreshLibrary() {
         viewModelScope.launch {
             _isLoading.value = true
+
+            // Escanear device e salvar no banco
+            val scannedSongs = mediaScanner.scanDevice()
+            if (scannedSongs.isNotEmpty()) {
+                songDao.insertSongs(scannedSongs)
+            }
+
+            // Carregar do banco
             songDao.getAllSongs().collect { songList ->
                 _songs.value = songList
                 _isLoading.value = false
@@ -46,9 +56,5 @@ class LibraryViewModel @Inject constructor(
                 songDao.searchSongs(query).collect { _songs.value = it }
             }
         }
-    }
-
-    fun refresh() {
-        loadSongs()
     }
 }
