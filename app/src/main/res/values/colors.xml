@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Cores principais do Apple Music (do documento de análise) -->
+    <color name="apple_red">#FA233B</color>
+    <color name="apple_pink">#FF2D55</color>
+    <color name="apple_gray">#8E8E93</color>
+
+    <!-- Cores de tema -->
+    <color name="black">#000000</color>
+    <color name="white">#FFFFFF</color>
+    <color name="dark_background">#1C1C1E</color>
+    <color name="dark_surface">#2C2C2E</color>
+    <color name="light_background">#F2F2F7</color>
+    <color name="light_surface">#FFFFFF</color>
+
+    <!-- Gradientes -->
+    <color name="gradient_start">#FA233B</color>
+    <color name="gradient_end">#FF2D55</color>
+</resources>
