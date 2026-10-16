@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -176,7 +177,6 @@ fun SongListItem(
             .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Capa do álbum - estilo Apple Music (quadrada, cantos arredondados)
         Box(
             modifier = Modifier
                 .size(50.dp)
@@ -203,7 +203,6 @@ fun SongListItem(
 
         Spacer(modifier = Modifier.width(12.dp))
 
-        // Informações da música
         Column(
             modifier = Modifier.weight(1f)
         ) {
@@ -225,7 +224,6 @@ fun SongListItem(
             )
         }
 
-        // Duração
         Text(
             text = song.formattedDuration,
             style = MaterialTheme.typography.bodySmall,
