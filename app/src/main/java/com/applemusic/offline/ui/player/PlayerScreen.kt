@@ -59,16 +59,13 @@ fun PlayerScreen(
     val isShuffleEnabled by viewModel.isShuffleEnabled.collectAsState()
     val repeatMode by viewModel.repeatMode.collectAsState()
 
-    // Cores exatas do Apple Music
     val primaryTextColor = Color.White
-    val secondaryTextColor = Color(0xB3FFFFFF) // 70% branco
+    val secondaryTextColor = Color(0xB3FFFFFF)
     val backgroundColor = Color(0xFF1a1a1a)
 
-    // Estados
     var blurredBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var targetColor by remember { mutableStateOf(Color(0xFF1a1a1a)) }
 
-    // Animação 1000ms
     val animatedColor by animateColorAsState(
         targetValue = targetColor,
         animationSpec = tween(durationMillis = 1000, easing = FastOutSlowInEasing),
@@ -106,7 +103,7 @@ fun PlayerScreen(
     BackHandler { onNavigateBack() }
 
     Box(modifier = Modifier.fillMaxSize().background(backgroundColor)) {
-        // LAYER 1: Gradiente radial 3 paradas
+        // LAYER 1: Gradiente radial com cor vibrante
         Box(
             modifier = Modifier.fillMaxSize().background(
                 Brush.radialGradient(
@@ -117,19 +114,27 @@ fun PlayerScreen(
             )
         )
 
-        // LAYER 2: Blur da capa (50dp, alpha 0.4)
+        // LAYER 2: Blur da capa com PorterDuff OVERLAY (efeito Apple!)
         blurredBitmap?.let { bitmap ->
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                // Técnica: blur + overlay color = efeito glass
                 Image(
                     bitmap = bitmap.asImageBitmap(),
                     contentDescription = null,
-                    modifier = Modifier.fillMaxSize().blur(50.dp).alpha(0.4f),
-                    contentScale = ContentScale.Crop
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .blur(50.dp)
+                        .alpha(0.5f),
+                    contentScale = ContentScale.Crop,
+                    colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(
+                        animatedColor.copy(alpha = 0.3f),
+                        blendMode = androidx.compose.ui.graphics.BlendMode.Overlay
+                    )
                 )
             }
         }
 
-        // LAYER 3: Scrim variável (centro 0.15, bordas 0.35)
+        // LAYER 3: Scrim variável
         Box(
             modifier = Modifier.fillMaxSize().background(
                 Brush.radialGradient(
@@ -143,10 +148,7 @@ fun PlayerScreen(
             )
         )
 
-        // LAYER 4: GLASS EFFECT (brilho sutil nas bordas)
-        GlassEffectOverlay()
-
-        // LAYER 5: Gradientes de legibilidade
+        // LAYER 4: Gradientes de legibilidade (LinearGradient horizontal como no código Apple!)
         Box(
             modifier = Modifier.fillMaxWidth().height(200.dp).background(
                 Brush.verticalGradient(colors = listOf(Color.Black.copy(alpha = 0.7f), Color.Transparent))
@@ -158,9 +160,11 @@ fun PlayerScreen(
             )
         )
 
+        // LAYER 5: Glass effect nas bordas (LinearGradient horizontal!)
+        GlassEffectOverlay()
+
         // CONTEÚDO
         Column(modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp)) {
-            // Header
             Row(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -176,7 +180,6 @@ fun PlayerScreen(
             Spacer(modifier = Modifier.height(20.dp))
 
             currentSong?.let { song ->
-                // Capa com sombra
                 val elevation = if (playbackState is PlaybackState.Playing) 8.dp else 4.dp
                 Box(
                     modifier = Modifier.fillMaxWidth().aspectRatio(1f)
@@ -196,14 +199,12 @@ fun PlayerScreen(
 
                 Spacer(modifier = Modifier.height(32.dp))
 
-                // Título e artista
                 Text(song.title, color = primaryTextColor, fontSize = 22.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(song.artist, color = secondaryTextColor, fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Seekbar
                 Column {
                     Slider(
                         value = if (duration > 0) currentPosition.toFloat() / duration else 0f,
@@ -218,7 +219,6 @@ fun PlayerScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Controles
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = { viewModel.toggleShuffle() }) {
                         Icon(Icons.Default.Shuffle, "Shuffle", tint = if (isShuffleEnabled) AppleRed else secondaryTextColor, modifier = Modifier.size(24.dp))
@@ -254,28 +254,29 @@ fun PlayerScreen(
     }
 }
 
-// GLASS EFFECT OVERLAY - O segredo do efeito Apple!
+// Glass effect com LinearGradient horizontal (como no código Apple!)
 @Composable
 fun GlassEffectOverlay() {
     Box(modifier = Modifier.fillMaxSize()) {
-        // Brilho topo (25% da tela, alpha 35/255)
+        // Topo: LinearGradient vertical
         Box(
             modifier = Modifier.fillMaxWidth().fillMaxHeight(0.25f).background(
                 Brush.verticalGradient(colors = listOf(Color.White.copy(alpha = 35f/255f), Color.Transparent))
             )
         )
-        // Brilho bordas laterais (8% cada, alpha 20/255)
+        // Esquerda: LinearGradient horizontal!
         Box(
             modifier = Modifier.fillMaxHeight().fillMaxWidth(0.08f).background(
                 Brush.horizontalGradient(colors = listOf(Color.White.copy(alpha = 20f/255f), Color.Transparent))
             )
         )
+        // Direita: LinearGradient horizontal!
         Box(
             modifier = Modifier.fillMaxHeight().fillMaxWidth(0.08f).align(Alignment.CenterEnd).background(
                 Brush.horizontalGradient(colors = listOf(Color.Transparent, Color.White.copy(alpha = 20f/255f)))
             )
         )
-        // Brilho inferior (15% da tela, alpha 15/255)
+        // Fundo: LinearGradient vertical
         Box(
             modifier = Modifier.fillMaxWidth().fillMaxHeight(0.15f).align(Alignment.BottomCenter).background(
                 Brush.verticalGradient(colors = listOf(Color.Transparent, Color.White.copy(alpha = 15f/255f)))
@@ -284,7 +285,6 @@ fun GlassEffectOverlay() {
     }
 }
 
-// Funções de cor
 private fun extractAppleStyleColor(bitmap: Bitmap): Int {
     val small = Bitmap.createScaledBitmap(bitmap, 50, 50, true)
     var r = 0f; var g = 0f; var b = 0f; var total = 0f
