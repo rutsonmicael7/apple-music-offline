@@ -5,8 +5,9 @@ import android.graphics.Color as AndroidColor
 import android.graphics.drawable.BitmapDrawable
 import android.os.Build
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.core.*
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -45,6 +46,7 @@ import com.applemusic.offline.viewmodel.PlaybackState
 import com.applemusic.offline.viewmodel.RepeatMode
 import kotlinx.coroutines.launch
 import kotlin.math.abs
+import kotlin.math.max
 
 @Composable
 fun PlayerScreen(
@@ -60,17 +62,16 @@ fun PlayerScreen(
 
     val primaryTextColor = Color.White
     val secondaryTextColor = Color.White.copy(alpha = 0.7f)
-    val backgroundColor = Color(0xFF1a1a1a) // Cor base do código Apple
+    val backgroundColor = Color(0xFF1a1a1a)
 
     // Estados
     var blurredBitmap by remember { mutableStateOf<Bitmap?>(null) }
-    var currentColor by remember { mutableStateOf(Color(0xFF1a1a1a)) }
     var targetColor by remember { mutableStateOf(Color(0xFF1a1a1a)) }
 
-    // Animação de transição de cor (800ms como no código Apple)
+    // Animação de cor - 1000ms com curva ease in out
     val animatedColor by animateColorAsState(
         targetValue = targetColor,
-        animationSpec = tween(durationMillis = 800, easing = FastOutSlowInEasing),
+        animationSpec = tween(durationMillis = 1000, easing = FastOutSlowInEasing),
         label = "colorTransition"
     )
 
@@ -95,7 +96,7 @@ fun PlayerScreen(
                             val bitmap = drawable.bitmap
                             blurredBitmap = bitmap
 
-                            // Extrair cor estilo Apple
+                            // Extrair cor com ajustes Apple
                             val appleColor = extractAppleStyleColor(bitmap)
                             targetColor = Color(appleColor)
                         }
@@ -116,7 +117,7 @@ fun PlayerScreen(
             .fillMaxSize()
             .background(backgroundColor)
     ) {
-        // CAMADA 1: Background com gradiente radial (cor animada)
+        // CAMADA 1: Gradiente radial com 3 paradas (0f, 0.4f, 1f)
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -124,16 +125,16 @@ fun PlayerScreen(
                     Brush.radialGradient(
                         colors = listOf(
                             animatedColor,
-                            darkenColor(animatedColor, 0.5f),
-                            backgroundColor
+                            animatedColor, // Mesma cor até 40% (zona clara no centro)
+                            darkenColor(animatedColor, 0.5f) // Escurece nas bordas
                         ),
-                        center = androidx.compose.ui.geometry.Offset(0.5f, 0.4f),
+                        center = androidx.compose.ui.geometry.Offset(0.5f, 0.5f),
                         radius = 1500f
                     )
                 )
         )
 
-        // CAMADA 2: Capa com blur (se disponível)
+        // CAMADA 2: Blur da capa (sigma 50, alpha 0.4)
         blurredBitmap?.let { bitmap ->
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 Image(
@@ -141,47 +142,26 @@ fun PlayerScreen(
                     contentDescription = null,
                     modifier = Modifier
                         .fillMaxSize()
-                        .blur(radius = 80.dp)
+                        .blur(radius = 50.dp)
                         .alpha(0.4f),
                     contentScale = ContentScale.Crop
                 )
             }
         }
 
-        // CAMADA 3: Scrim preto 25%
+        // CAMADA 3: Scrim variável (centro 0.15, bordas 0.35)
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.25f))
-        )
-
-        // CAMADA 4: Gradiente topo (legibilidade título)
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(200.dp)
                 .background(
-                    Brush.verticalGradient(
+                    Brush.radialGradient(
                         colors = listOf(
-                            Color.Black.copy(alpha = 0.7f),
-                            Color.Transparent
-                        )
-                    )
-                )
-        )
-
-        // CAMADA 5: Gradiente fundo (legibilidade controles)
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(300.dp)
-                .align(Alignment.BottomCenter)
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color.Transparent,
-                            Color.Black.copy(alpha = 0.78f)
-                        )
+                            Color.Black.copy(alpha = 0.15f), // Centro mais claro
+                            Color.Black.copy(alpha = 0.25f),
+                            Color.Black.copy(alpha = 0.35f)  // Bordas mais escuras
+                        ),
+                        center = androidx.compose.ui.geometry.Offset(0.5f, 0.5f),
+                        radius = 1200f
                     )
                 )
         )
@@ -418,12 +398,14 @@ fun PlayerScreen(
     }
 }
 
-// Função para extrair cor estilo Apple (do código fornecido)
+// Extração de cor estilo Apple (com todos os ajustes)
 private fun extractAppleStyleColor(bitmap: Bitmap): Int {
+    // Reduz bitmap para 50x50
     val small = Bitmap.createScaledBitmap(bitmap, 50, 50, true)
     var r = 0f; var g = 0f; var b = 0f; var total = 0f
     val cx = small.width / 2; val cy = small.height / 2
 
+    // Média ponderada pelo centro
     for (x in 0 until small.width step 2) {
         for (y in 0 until small.height step 2) {
             val pixel = small.getPixel(x, y)
@@ -436,15 +418,41 @@ private fun extractAppleStyleColor(bitmap: Bitmap): Int {
     }
 
     val avg = AndroidColor.rgb((r/total).toInt(), (g/total).toInt(), (b/total).toInt())
-    return increaseSaturation(avg, 1.4f)
+
+    // Aplicar ajustes Apple: saturação 1.4, brilho 0.85, contraste 1.1
+    return appleStyleColorAdjustment(avg)
 }
 
-private fun increaseSaturation(color: Int, factor: Float): Int {
+private fun appleStyleColorAdjustment(color: Int): Int {
     val hsv = FloatArray(3)
     AndroidColor.colorToHSV(color, hsv)
-    hsv[1] = (hsv[1] * factor).coerceIn(0f, 1f)
+
+    // Saturação: aumenta 40%
+    hsv[1] = (hsv[1] * 1.4f).coerceIn(0f, 1f)
+
+    // Brilho: reduz 15%
     hsv[2] = (hsv[2] * 0.85f).coerceIn(0f, 1f)
-    return AndroidColor.HSVToColor(hsv)
+
+    var adjusted = AndroidColor.HSVToColor(hsv)
+
+    // Contraste sutil: 1.1
+    adjusted = applyContrastCurve(adjusted, contrast = 1.1f)
+
+    return adjusted
+}
+
+private fun applyContrastCurve(color: Int, contrast: Float): Int {
+    val r = AndroidColor.red(color)
+    val g = AndroidColor.green(color)
+    val b = AndroidColor.blue(color)
+
+    fun adjust(channel: Int): Int {
+        val normalized = channel / 255f
+        val adjusted = ((normalized - 0.5f) * contrast + 0.5f).coerceIn(0f, 1f)
+        return (adjusted * 255).toInt()
+    }
+
+    return AndroidColor.rgb(adjust(r), adjust(g), adjust(b))
 }
 
 private fun darkenColor(color: Color, factor: Float): Color {
