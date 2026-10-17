@@ -5,22 +5,24 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
-// Cores do Apple Music (do documento de análise)
+// Cores do Apple Music
 val AppleRed = Color(0xFFFA233B)
 val ApplePink = Color(0xFFFF2D55)
 val AppleGray = Color(0xFF8E8E93)
 
-// Cores escuras
-val DarkBackground = Color(0xFF1C1C1E)
-val DarkSurface = Color(0xFF2C2C2E)
+// Cores escuras (modo escuro padrão)
+val DarkBackground = Color(0xFF000000)
+val DarkSurface = Color(0xFF1C1C1E)
 val DarkOnBackground = Color(0xFFFFFFFF)
 val DarkOnSurface = Color(0xFFFFFFFF)
+val DarkSecondary = Color(0xFF8E8E93)
 
-// Cores claras
-val LightBackground = Color(0xFFF2F2F7)
-val LightSurface = Color(0xFFFFFFFF)
+// Cores claras (modo claro)
+val LightBackground = Color(0xFFFFFFFF)
+val LightSurface = Color(0xFFF2F2F7)
 val LightOnBackground = Color(0xFF000000)
 val LightOnSurface = Color(0xFF000000)
+val LightSecondary = Color(0xFF8E8E93)
 
 // Esquema de cores escuro
 private val DarkColorScheme = darkColorScheme(
@@ -32,7 +34,9 @@ private val DarkColorScheme = darkColorScheme(
     onBackground = DarkOnBackground,
     onSurface = DarkOnSurface,
     onPrimary = Color.White,
-    onSecondary = Color.White
+    onSecondary = Color.White,
+    surfaceVariant = DarkSurface,
+    onSurfaceVariant = DarkSecondary
 )
 
 // Esquema de cores claro
@@ -45,12 +49,14 @@ private val LightColorScheme = lightColorScheme(
     onBackground = LightOnBackground,
     onSurface = LightOnSurface,
     onPrimary = Color.White,
-    onSecondary = Color.White
+    onSecondary = Color.White,
+    surfaceVariant = LightSurface,
+    onSurfaceVariant = LightSecondary
 )
 
 @Composable
 fun AppleMusicOfflineTheme(
-    darkTheme: Boolean = true, // Apple Music é predominantemente escuro
+    darkTheme: Boolean = isSystemInDarkTheme(), // Segue o tema do sistema
     content: @Composable () -> Unit
 ) {
     val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
