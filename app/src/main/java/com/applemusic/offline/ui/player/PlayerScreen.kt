@@ -1,6 +1,10 @@
 package com.applemusic.offline.ui.player
 
+import android.graphics.Bitmap
+import android.graphics.drawable.BitmapDrawable
+import android.os.Build
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
@@ -12,24 +16,33 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.palette.graphics.Palette
+import coil.ImageLoader
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import coil.request.SuccessResult
 import com.applemusic.offline.data.model.Song
 import com.applemusic.offline.ui.theme.ApplePink
 import com.applemusic.offline.ui.theme.AppleRed
 import com.applemusic.offline.viewmodel.PlayerViewModel
 import com.applemusic.offline.viewmodel.PlaybackState
 import com.applemusic.offline.viewmodel.RepeatMode
+import kotlinx.coroutines.launch
 
 @Composable
 fun PlayerScreen(
@@ -48,6 +61,49 @@ fun PlayerScreen(
     val textColor = if (isDarkTheme) Color(0xFFFFFFFF) else Color(0xFF000000)
     val secondaryTextColor = Color(0xFF8E8E93)
 
+    // Estados para blur e cores
+    var blurredBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    var vibrantColor by remember { mutableStateOf<Color?>(null) }
+    var darkVibrantColor by remember { mutableStateOf<Color?>(null) }
+
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+
+    // Carregar imagem e extrair cores quando a música muda
+    LaunchedEffect(currentSong?.albumArtUri) {
+        currentSong?.albumArtUri?.let { uri ->
+            scope.launch {
+                try {
+                    val loader = ImageLoader(context)
+                    val request = ImageRequest.Builder(context)
+                        .data(uri)
+                        .allowHardware(false) // Importante para obter o bitmap
+                        .build()
+
+                    val result = loader.execute(request)
+                    if (result is SuccessResult) {
+                        val drawable = result.drawable
+                        if (drawable is BitmapDrawable) {
+                            val bitmap = drawable.bitmap
+
+                            // Extrair cores com Palette
+                            val palette = Palette.from(bitmap).generate()
+                            vibrantColor = palette.vibrantSwatch?.let { Color(it.rgb) }
+                            darkVibrantColor = palette.darkVibrantSwatch?.let { Color(it.rgb) }
+                                ?: palette.darkMutedSwatch?.let { Color(it.rgb) }
+                                ?: palette.dominantSwatch?.let { Color(it.rgb) }
+
+                            // Criar bitmap para o fundo (será desfocado no composable)
+                            blurredBitmap = bitmap
+                        }
+                    }
+                } catch (e: Exception) {
+                    // Ignora erros
+                }
+            }
+        }
+    }
+
     BackHandler {
         onNavigateBack()
     }
@@ -57,6 +113,65 @@ fun PlayerScreen(
             .fillMaxSize()
             .background(backgroundColor)
     ) {
+        // CAMADA 1: Fundo com blur (Android 12+)
+        blurredBitmap?.let { bitmap ->
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                // Blur nativo do Android 12+
+                Image(
+                    bitmap = bitmap.asImageBitmap(),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .blur(radius = 100.dp), // Blur pesado estilo Apple
+                    contentScale = ContentScale.Crop,
+                    alpha = 0.5f
+                )
+            } else {
+                // Fallback para Android antigo: imagem com alpha baixo
+                Image(
+                    bitmap = bitmap.asImageBitmap(),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .alpha(0.3f),
+                    contentScale = ContentScale.Crop
+                )
+            }
+        }
+
+        // CAMADA 2: Gradiente com cores da música
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            vibrantColor?.copy(alpha = 0.3f) ?: Color.Transparent,
+                            darkVibrantColor?.copy(alpha = 0.5f) ?: Color.Transparent,
+                            backgroundColor
+                        )
+                    )
+                )
+        )
+
+        // CAMADA 3: Scrim para legibilidade (modo escuro)
+        if (isDarkTheme) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Black.copy(alpha = 0.4f),
+                                Color.Black.copy(alpha = 0.2f),
+                                Color.Black.copy(alpha = 0.5f)
+                            )
+                        )
+                    )
+            )
+        }
+
+        // CONTEÚDO
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -82,7 +197,7 @@ fun PlayerScreen(
                 Text(
                     text = "Tocando Agora",
                     style = MaterialTheme.typography.labelMedium,
-                    color = secondaryTextColor,
+                    color = textColor.copy(alpha = 0.7f),
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium
                 )
@@ -93,7 +208,7 @@ fun PlayerScreen(
             Spacer(modifier = Modifier.height(20.dp))
 
             currentSong?.let { song ->
-                // Capa
+                // Capa do álbum
                 val elevation = if (playbackState is PlaybackState.Playing) 8.dp else 4.dp
 
                 Box(
@@ -157,7 +272,7 @@ fun PlayerScreen(
                 Text(
                     text = song.artist,
                     style = MaterialTheme.typography.titleMedium,
-                    color = secondaryTextColor,
+                    color = textColor.copy(alpha = 0.7f),
                     fontSize = 18.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -178,7 +293,7 @@ fun PlayerScreen(
                         colors = SliderDefaults.colors(
                             thumbColor = textColor,
                             activeTrackColor = textColor,
-                            inactiveTrackColor = if (isDarkTheme) Color(0xFF2C2C2E) else Color(0xFFE0E0E0)
+                            inactiveTrackColor = textColor.copy(alpha = 0.3f)
                         )
                     )
 
@@ -189,13 +304,13 @@ fun PlayerScreen(
                         Text(
                             text = viewModel.formatTime(currentPosition),
                             style = MaterialTheme.typography.labelSmall,
-                            color = secondaryTextColor,
+                            color = textColor.copy(alpha = 0.7f),
                             fontSize = 12.sp
                         )
                         Text(
                             text = viewModel.formatTime(duration),
                             style = MaterialTheme.typography.labelSmall,
-                            color = secondaryTextColor,
+                            color = textColor.copy(alpha = 0.7f),
                             fontSize = 12.sp
                         )
                     }
@@ -213,7 +328,7 @@ fun PlayerScreen(
                         Icon(
                             imageVector = Icons.Default.Shuffle,
                             contentDescription = "Shuffle",
-                            tint = if (isShuffleEnabled) AppleRed else secondaryTextColor,
+                            tint = if (isShuffleEnabled) AppleRed else textColor.copy(alpha = 0.7f),
                             modifier = Modifier.size(22.dp)
                         )
                     }
@@ -259,7 +374,7 @@ fun PlayerScreen(
                             },
                             contentDescription = "Repeat",
                             tint = when (repeatMode) {
-                                RepeatMode.OFF -> secondaryTextColor
+                                RepeatMode.OFF -> textColor.copy(alpha = 0.7f)
                                 else -> AppleRed
                             },
                             modifier = Modifier.size(22.dp)
