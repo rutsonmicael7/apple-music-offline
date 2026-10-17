@@ -1,5 +1,7 @@
 package com.applemusic.offline.ui.player
 
+import android.graphics.Bitmap
+import android.graphics.drawable.BitmapDrawable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -14,7 +16,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -22,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.applemusic.offline.data.model.Song
 import com.applemusic.offline.ui.theme.ApplePink
 import com.applemusic.offline.ui.theme.AppleRed
@@ -41,17 +46,34 @@ fun PlayerScreen(
     val isShuffleEnabled by viewModel.isShuffleEnabled.collectAsState()
     val repeatMode by viewModel.repeatMode.collectAsState()
 
+    // Cor dinâmica extraída da capa
+    var dominantColor by remember { mutableStateOf(Color(0xFF1C1C1E)) }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
     ) {
+        // Fundo com gradiente dinâmico (simula o blur/vibrancy)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            dominantColor.copy(alpha = 0.6f),
+                            Color.Black
+                        )
+                    )
+                )
+        )
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 24.dp)
         ) {
-            // Cabeçalho minimalista
+            // Cabeçalho
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -70,13 +92,15 @@ fun PlayerScreen(
             Spacer(modifier = Modifier.height(20.dp))
 
             currentSong?.let { song ->
-                // Capa do álbum - estilo Apple Music (grande, centralizada, cantos arredondados)
+                // Capa do álbum com sombra dinâmica
+                val elevation = if (playbackState is PlaybackState.Playing) 8.dp else 4.dp
+
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .aspectRatio(1f)
                         .shadow(
-                            elevation = 8.dp,
+                            elevation = elevation,
                             shape = RoundedCornerShape(12.dp),
                             ambientColor = Color.Black.copy(alpha = 0.3f)
                         )
@@ -86,10 +110,20 @@ fun PlayerScreen(
                 ) {
                     if (song.albumArtUri != null) {
                         AsyncImage(
-                            model = song.albumArtUri,
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(song.albumArtUri)
+                                .crossfade(true)
+                                .build(),
                             contentDescription = "Album art",
                             modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
+                            contentScale = ContentScale.Crop,
+                            onSuccess = { result ->
+                                // Extrair cor dominante da imagem
+                                val bitmap = (result.result.drawable as? BitmapDrawable)?.bitmap
+                                bitmap?.let { extractDominantColor(it) { color ->
+                                    dominantColor = color
+                                } }
+                            }
                         )
                     } else {
                         Box(
@@ -142,7 +176,7 @@ fun PlayerScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Barra de progresso estilo Apple Music
+                // Barra de progresso
                 Column(modifier = Modifier.fillMaxWidth()) {
                     Slider(
                         value = if (duration > 0) currentPosition.toFloat() / duration else 0f,
@@ -178,13 +212,12 @@ fun PlayerScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Controles principais - estilo Apple Music
+                // Controles principais
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Shuffle
                     IconButton(onClick = { viewModel.toggleShuffle() }) {
                         Icon(
                             imageVector = Icons.Default.Shuffle,
@@ -194,7 +227,6 @@ fun PlayerScreen(
                         )
                     }
 
-                    // Previous
                     IconButton(onClick = { viewModel.skipToPrevious() }) {
                         Icon(
                             imageVector = Icons.Default.SkipPrevious,
@@ -204,7 +236,6 @@ fun PlayerScreen(
                         )
                     }
 
-                    // Play/Pause - botão grande central
                     FloatingActionButton(
                         onClick = { viewModel.playPause() },
                         modifier = Modifier.size(64.dp),
@@ -219,7 +250,6 @@ fun PlayerScreen(
                         )
                     }
 
-                    // Next
                     IconButton(onClick = { viewModel.skipToNext() }) {
                         Icon(
                             imageVector = Icons.Default.SkipNext,
@@ -229,7 +259,6 @@ fun PlayerScreen(
                         )
                     }
 
-                    // Repeat
                     IconButton(onClick = { viewModel.cycleRepeatMode() }) {
                         Icon(
                             imageVector = when (repeatMode) {
@@ -249,10 +278,11 @@ fun PlayerScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Controles secundários (volume, etc) - opcional
+                // Controles de volume
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     IconButton(onClick = { }) {
                         Icon(
@@ -285,7 +315,6 @@ fun PlayerScreen(
                 }
 
             } ?: run {
-                // Estado vazio
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
@@ -310,6 +339,16 @@ fun PlayerScreen(
             }
         }
     }
+}
+
+// Função para extrair cor dominante da imagem
+private fun extractDominantColor(bitmap: Bitmap, onColorExtracted: (Color) -> Unit) {
+    // Simplificado - usa uma cor média
+    val scaledBitmap = Bitmap.createScaledBitmap(bitmap, 1, 1, true)
+    val pixel = scaledBitmap.getPixel(0, 0)
+    val color = Color(pixel)
+    scaledBitmap.recycle()
+    onColorExtracted(color)
 }
 
 private fun formatTime(ms: Long): String {
