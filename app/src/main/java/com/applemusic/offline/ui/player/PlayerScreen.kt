@@ -46,7 +46,6 @@ import com.applemusic.offline.viewmodel.PlaybackState
 import com.applemusic.offline.viewmodel.RepeatMode
 import kotlinx.coroutines.launch
 import kotlin.math.abs
-import kotlin.math.max
 
 @Composable
 fun PlayerScreen(
@@ -60,15 +59,16 @@ fun PlayerScreen(
     val isShuffleEnabled by viewModel.isShuffleEnabled.collectAsState()
     val repeatMode by viewModel.repeatMode.collectAsState()
 
+    // Cores exatas do Apple Music
     val primaryTextColor = Color.White
-    val secondaryTextColor = Color.White.copy(alpha = 0.7f)
+    val secondaryTextColor = Color(0xB3FFFFFF) // 70% branco
     val backgroundColor = Color(0xFF1a1a1a)
 
     // Estados
     var blurredBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var targetColor by remember { mutableStateOf(Color(0xFF1a1a1a)) }
 
-    // Animação de cor - 1000ms com curva ease in out
+    // Animação 1000ms
     val animatedColor by animateColorAsState(
         targetValue = targetColor,
         animationSpec = tween(durationMillis = 1000, easing = FastOutSlowInEasing),
@@ -78,7 +78,6 @@ fun PlayerScreen(
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
-    // Extrair cor estilo Apple quando música muda
     LaunchedEffect(currentSong?.albumArtUri) {
         currentSong?.albumArtUri?.let { uri ->
             scope.launch {
@@ -95,371 +94,217 @@ fun PlayerScreen(
                         if (drawable is BitmapDrawable) {
                             val bitmap = drawable.bitmap
                             blurredBitmap = bitmap
-
-                            // Extrair cor com ajustes Apple
                             val appleColor = extractAppleStyleColor(bitmap)
                             targetColor = Color(appleColor)
                         }
                     }
-                } catch (e: Exception) {
-                    // Ignora
-                }
+                } catch (e: Exception) { }
             }
         }
     }
 
-    BackHandler {
-        onNavigateBack()
-    }
+    BackHandler { onNavigateBack() }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(backgroundColor)
-    ) {
-        // CAMADA 1: Gradiente radial com 3 paradas (0f, 0.4f, 1f)
+    Box(modifier = Modifier.fillMaxSize().background(backgroundColor)) {
+        // LAYER 1: Gradiente radial 3 paradas
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(
-                            animatedColor,
-                            animatedColor, // Mesma cor até 40% (zona clara no centro)
-                            darkenColor(animatedColor, 0.5f) // Escurece nas bordas
-                        ),
-                        center = androidx.compose.ui.geometry.Offset(0.5f, 0.5f),
-                        radius = 1500f
-                    )
+            modifier = Modifier.fillMaxSize().background(
+                Brush.radialGradient(
+                    colors = listOf(animatedColor, animatedColor, darkenColor(animatedColor, 0.5f)),
+                    center = androidx.compose.ui.geometry.Offset(0.5f, 0.5f),
+                    radius = 1500f
                 )
+            )
         )
 
-        // CAMADA 2: Blur da capa (sigma 50, alpha 0.4)
+        // LAYER 2: Blur da capa (50dp, alpha 0.4)
         blurredBitmap?.let { bitmap ->
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 Image(
                     bitmap = bitmap.asImageBitmap(),
                     contentDescription = null,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .blur(radius = 50.dp)
-                        .alpha(0.4f),
+                    modifier = Modifier.fillMaxSize().blur(50.dp).alpha(0.4f),
                     contentScale = ContentScale.Crop
                 )
             }
         }
 
-        // CAMADA 3: Scrim variável (centro 0.15, bordas 0.35)
+        // LAYER 3: Scrim variável (centro 0.15, bordas 0.35)
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(
-                            Color.Black.copy(alpha = 0.15f), // Centro mais claro
-                            Color.Black.copy(alpha = 0.25f),
-                            Color.Black.copy(alpha = 0.35f)  // Bordas mais escuras
-                        ),
-                        center = androidx.compose.ui.geometry.Offset(0.5f, 0.5f),
-                        radius = 1200f
-                    )
+            modifier = Modifier.fillMaxSize().background(
+                Brush.radialGradient(
+                    colors = listOf(
+                        Color.Black.copy(alpha = 0.15f),
+                        Color.Black.copy(alpha = 0.25f),
+                        Color.Black.copy(alpha = 0.35f)
+                    ),
+                    radius = 1200f
                 )
+            )
+        )
+
+        // LAYER 4: GLASS EFFECT (brilho sutil nas bordas)
+        GlassEffectOverlay()
+
+        // LAYER 5: Gradientes de legibilidade
+        Box(
+            modifier = Modifier.fillMaxWidth().height(200.dp).background(
+                Brush.verticalGradient(colors = listOf(Color.Black.copy(alpha = 0.7f), Color.Transparent))
+            )
+        )
+        Box(
+            modifier = Modifier.fillMaxWidth().height(300.dp).align(Alignment.BottomCenter).background(
+                Brush.verticalGradient(colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.78f)))
+            )
         )
 
         // CONTEÚDO
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 24.dp)
-        ) {
-            // Cabeçalho
+        Column(modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp)) {
+            // Header
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
+                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = onNavigateBack) {
-                    Icon(
-                        imageVector = Icons.Default.KeyboardArrowDown,
-                        contentDescription = "Voltar",
-                        tint = primaryTextColor,
-                        modifier = Modifier.size(32.dp)
-                    )
+                    Icon(Icons.Default.KeyboardArrowDown, "Voltar", tint = primaryTextColor, modifier = Modifier.size(32.dp))
                 }
-
-                Text(
-                    text = "Tocando Agora",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = secondaryTextColor,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium
-                )
-
+                Text("Tocando Agora", color = secondaryTextColor, fontSize = 14.sp, fontWeight = FontWeight.Medium)
                 Spacer(modifier = Modifier.width(48.dp))
             }
 
             Spacer(modifier = Modifier.height(20.dp))
 
             currentSong?.let { song ->
-                // Capa
+                // Capa com sombra
                 val elevation = if (playbackState is PlaybackState.Playing) 8.dp else 4.dp
-
                 Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(1f)
-                        .shadow(
-                            elevation = elevation,
-                            shape = RoundedCornerShape(12.dp),
-                            ambientColor = Color.Black.copy(alpha = 0.3f)
-                        )
+                    modifier = Modifier.fillMaxWidth().aspectRatio(1f)
+                        .shadow(elevation, RoundedCornerShape(12.dp))
                         .clip(RoundedCornerShape(12.dp))
                         .background(Color(0xFF1C1C1E)),
                     contentAlignment = Alignment.Center
                 ) {
                     if (song.albumArtUri != null) {
-                        AsyncImage(
-                            model = song.albumArtUri,
-                            contentDescription = "Album art",
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
+                        AsyncImage(model = song.albumArtUri, contentDescription = "Album art", modifier = Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                     } else {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(
-                                    Brush.linearGradient(
-                                        colors = listOf(AppleRed, ApplePink)
-                                    )
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.MusicNote,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(80.dp)
-                            )
+                        Box(modifier = Modifier.fillMaxSize().background(Brush.linearGradient(listOf(AppleRed, ApplePink))), contentAlignment = Alignment.Center) {
+                            Icon(Icons.Default.MusicNote, null, tint = Color.White, modifier = Modifier.size(80.dp))
                         }
                     }
                 }
 
                 Spacer(modifier = Modifier.height(32.dp))
 
-                // Título
-                Text(
-                    text = song.title,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = primaryTextColor,
-                    fontSize = 22.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth()
-                )
-
+                // Título e artista
+                Text(song.title, color = primaryTextColor, fontSize = 22.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
                 Spacer(modifier = Modifier.height(6.dp))
-
-                // Artista
-                Text(
-                    text = song.artist,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = secondaryTextColor,
-                    fontSize = 18.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                Text(song.artist, color = secondaryTextColor, fontSize = 18.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Progresso
-                Column(modifier = Modifier.fillMaxWidth()) {
+                // Seekbar
+                Column {
                     Slider(
                         value = if (duration > 0) currentPosition.toFloat() / duration else 0f,
-                        onValueChange = { fraction ->
-                            viewModel.seekTo((fraction * duration).toLong())
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = SliderDefaults.colors(
-                            thumbColor = primaryTextColor,
-                            activeTrackColor = primaryTextColor,
-                            inactiveTrackColor = primaryTextColor.copy(alpha = 0.3f)
-                        )
+                        onValueChange = { viewModel.seekTo((it * duration).toLong()) },
+                        colors = SliderDefaults.colors(thumbColor = primaryTextColor, activeTrackColor = primaryTextColor, inactiveTrackColor = primaryTextColor.copy(alpha = 0.3f))
                     )
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = viewModel.formatTime(currentPosition),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = secondaryTextColor,
-                            fontSize = 12.sp
-                        )
-                        Text(
-                            text = viewModel.formatTime(duration),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = secondaryTextColor,
-                            fontSize = 12.sp
-                        )
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(viewModel.formatTime(currentPosition), color = secondaryTextColor, fontSize = 12.sp)
+                        Text(viewModel.formatTime(duration), color = secondaryTextColor, fontSize = 12.sp)
                     }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // Controles
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = { viewModel.toggleShuffle() }) {
-                        Icon(
-                            imageVector = Icons.Default.Shuffle,
-                            contentDescription = "Shuffle",
-                            tint = if (isShuffleEnabled) AppleRed else secondaryTextColor,
-                            modifier = Modifier.size(22.dp)
-                        )
+                        Icon(Icons.Default.Shuffle, "Shuffle", tint = if (isShuffleEnabled) AppleRed else secondaryTextColor, modifier = Modifier.size(24.dp))
                     }
-
                     IconButton(onClick = { viewModel.skipToPrevious() }) {
-                        Icon(
-                            imageVector = Icons.Default.SkipPrevious,
-                            contentDescription = "Previous",
-                            tint = primaryTextColor,
-                            modifier = Modifier.size(32.dp)
-                        )
+                        Icon(Icons.Default.SkipPrevious, "Previous", tint = primaryTextColor, modifier = Modifier.size(32.dp))
                     }
-
                     FloatingActionButton(
                         onClick = { viewModel.playPause() },
-                        modifier = Modifier
-                            .size(64.dp)
-                            .shadow(8.dp, CircleShape),
+                        modifier = Modifier.size(72.dp).shadow(8.dp, CircleShape),
                         containerColor = Color.White,
                         contentColor = Color.Black,
                         shape = CircleShape
                     ) {
-                        Icon(
-                            imageVector = if (playbackState is PlaybackState.Playing) Icons.Default.Pause else Icons.Default.PlayArrow,
-                            contentDescription = if (playbackState is PlaybackState.Playing) "Pause" else "Play",
-                            modifier = Modifier.size(36.dp)
-                        )
+                        Icon(if (playbackState is PlaybackState.Playing) Icons.Default.Pause else Icons.Default.PlayArrow, "Play/Pause", modifier = Modifier.size(48.dp))
                     }
-
                     IconButton(onClick = { viewModel.skipToNext() }) {
-                        Icon(
-                            imageVector = Icons.Default.SkipNext,
-                            contentDescription = "Next",
-                            tint = primaryTextColor,
-                            modifier = Modifier.size(32.dp)
-                        )
+                        Icon(Icons.Default.SkipNext, "Next", tint = primaryTextColor, modifier = Modifier.size(32.dp))
                     }
-
                     IconButton(onClick = { viewModel.cycleRepeatMode() }) {
                         Icon(
-                            imageVector = when (repeatMode) {
-                                RepeatMode.OFF -> Icons.Default.Repeat
-                                RepeatMode.ALL -> Icons.Default.Repeat
-                                RepeatMode.ONE -> Icons.Default.RepeatOne
-                            },
-                            contentDescription = "Repeat",
-                            tint = when (repeatMode) {
-                                RepeatMode.OFF -> secondaryTextColor
-                                else -> AppleRed
-                            },
-                            modifier = Modifier.size(22.dp)
+                            when (repeatMode) { RepeatMode.OFF -> Icons.Default.Repeat; RepeatMode.ALL -> Icons.Default.Repeat; RepeatMode.ONE -> Icons.Default.RepeatOne },
+                            "Repeat",
+                            tint = if (repeatMode == RepeatMode.OFF) secondaryTextColor else AppleRed,
+                            modifier = Modifier.size(24.dp)
                         )
                     }
                 }
 
                 Spacer(modifier = Modifier.height(32.dp))
-
-            } ?: run {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "Nenhuma música tocando",
-                        style = MaterialTheme.typography.titleLarge,
-                        color = secondaryTextColor
-                    )
-                }
             }
         }
     }
 }
 
-// Extração de cor estilo Apple (com todos os ajustes)
+// GLASS EFFECT OVERLAY - O segredo do efeito Apple!
+@Composable
+fun GlassEffectOverlay() {
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Brilho topo (25% da tela, alpha 35/255)
+        Box(
+            modifier = Modifier.fillMaxWidth().fillMaxHeight(0.25f).background(
+                Brush.verticalGradient(colors = listOf(Color.White.copy(alpha = 35f/255f), Color.Transparent))
+            )
+        )
+        // Brilho bordas laterais (8% cada, alpha 20/255)
+        Box(
+            modifier = Modifier.fillMaxHeight().fillMaxWidth(0.08f).background(
+                Brush.horizontalGradient(colors = listOf(Color.White.copy(alpha = 20f/255f), Color.Transparent))
+            )
+        )
+        Box(
+            modifier = Modifier.fillMaxHeight().fillMaxWidth(0.08f).align(Alignment.CenterEnd).background(
+                Brush.horizontalGradient(colors = listOf(Color.Transparent, Color.White.copy(alpha = 20f/255f)))
+            )
+        )
+        // Brilho inferior (15% da tela, alpha 15/255)
+        Box(
+            modifier = Modifier.fillMaxWidth().fillMaxHeight(0.15f).align(Alignment.BottomCenter).background(
+                Brush.verticalGradient(colors = listOf(Color.Transparent, Color.White.copy(alpha = 15f/255f)))
+            )
+        )
+    }
+}
+
+// Funções de cor
 private fun extractAppleStyleColor(bitmap: Bitmap): Int {
-    // Reduz bitmap para 50x50
     val small = Bitmap.createScaledBitmap(bitmap, 50, 50, true)
     var r = 0f; var g = 0f; var b = 0f; var total = 0f
     val cx = small.width / 2; val cy = small.height / 2
-
-    // Média ponderada pelo centro
     for (x in 0 until small.width step 2) {
         for (y in 0 until small.height step 2) {
             val pixel = small.getPixel(x, y)
             val weight = 1f - (abs(x - cx) + abs(y - cy)).toFloat() / (small.width + small.height)
-            r += AndroidColor.red(pixel) * weight
-            g += AndroidColor.green(pixel) * weight
-            b += AndroidColor.blue(pixel) * weight
-            total += weight
+            r += AndroidColor.red(pixel) * weight; g += AndroidColor.green(pixel) * weight; b += AndroidColor.blue(pixel) * weight; total += weight
         }
     }
-
-    val avg = AndroidColor.rgb((r/total).toInt(), (g/total).toInt(), (b/total).toInt())
-
-    // Aplicar ajustes Apple: saturação 1.4, brilho 0.85, contraste 1.1
-    return appleStyleColorAdjustment(avg)
+    return increaseSaturation(AndroidColor.rgb((r/total).toInt(), (g/total).toInt(), (b/total).toInt()), 1.4f)
 }
 
-private fun appleStyleColorAdjustment(color: Int): Int {
-    val hsv = FloatArray(3)
-    AndroidColor.colorToHSV(color, hsv)
-
-    // Saturação: aumenta 40%
-    hsv[1] = (hsv[1] * 1.4f).coerceIn(0f, 1f)
-
-    // Brilho: reduz 15%
-    hsv[2] = (hsv[2] * 0.85f).coerceIn(0f, 1f)
-
-    var adjusted = AndroidColor.HSVToColor(hsv)
-
-    // Contraste sutil: 1.1
-    adjusted = applyContrastCurve(adjusted, contrast = 1.1f)
-
-    return adjusted
-}
-
-private fun applyContrastCurve(color: Int, contrast: Float): Int {
-    val r = AndroidColor.red(color)
-    val g = AndroidColor.green(color)
-    val b = AndroidColor.blue(color)
-
-    fun adjust(channel: Int): Int {
-        val normalized = channel / 255f
-        val adjusted = ((normalized - 0.5f) * contrast + 0.5f).coerceIn(0f, 1f)
-        return (adjusted * 255).toInt()
-    }
-
-    return AndroidColor.rgb(adjust(r), adjust(g), adjust(b))
+private fun increaseSaturation(color: Int, factor: Float): Int {
+    val hsv = FloatArray(3); AndroidColor.colorToHSV(color, hsv)
+    hsv[1] = (hsv[1] * factor).coerceIn(0f, 1f); hsv[2] = (hsv[2] * 0.85f).coerceIn(0f, 1f)
+    return AndroidColor.HSVToColor(hsv)
 }
 
 private fun darkenColor(color: Color, factor: Float): Color {
-    return Color(
-        red = color.red * factor,
-        green = color.green * factor,
-        blue = color.blue * factor,
-        alpha = color.alpha
-    )
+    return Color(color.red * factor, color.green * factor, color.blue * factor, color.alpha)
 }
