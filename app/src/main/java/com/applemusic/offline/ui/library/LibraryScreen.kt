@@ -2,6 +2,7 @@ package com.applemusic.offline.ui.library
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -29,18 +30,24 @@ import com.applemusic.offline.viewmodel.LibraryViewModel
 @Composable
 fun LibraryScreen(
     viewModel: LibraryViewModel = hiltViewModel(),
-    onSongClick: (Song, List<Song>, Int) -> Unit,
-    onNavigateToPlayer: () -> Unit
+    onSongClick: (Song, List<Song>, Int) -> Unit
 ) {
     val songs by viewModel.songs.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
 
+    // Cores adaptativas
+    val isDarkTheme = isSystemInDarkTheme()
+    val backgroundColor = if (isDarkTheme) Color(0xFF000000) else Color(0xFFFFFFFF)
+    val surfaceColor = if (isDarkTheme) Color(0xFF1C1C1E) else Color(0xFFF2F2F7)
+    val textColor = if (isDarkTheme) Color(0xFFFFFFFF) else Color(0xFF000000)
+    val secondaryTextColor = Color(0xFF8E8E93)
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black)
+            .background(backgroundColor)
     ) {
-        // Cabeçalho com botão de atualizar
+        // Cabeçalho
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -52,7 +59,7 @@ fun LibraryScreen(
                 text = "Biblioteca",
                 style = MaterialTheme.typography.headlineLarge,
                 fontWeight = FontWeight.Bold,
-                color = Color.White,
+                color = textColor,
                 fontSize = 34.sp
             )
 
@@ -69,8 +76,8 @@ fun LibraryScreen(
         var selectedTab by remember { mutableStateOf(0) }
         TabRow(
             selectedTabIndex = selectedTab,
-            containerColor = Color.Black,
-            contentColor = Color.White,
+            containerColor = backgroundColor,
+            contentColor = textColor,
             indicator = { tabPositions ->
                 TabRowDefaults.Indicator(
                     modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
@@ -84,7 +91,8 @@ fun LibraryScreen(
                 text = { 
                     Text(
                         "Músicas",
-                        fontWeight = if (selectedTab == 0) FontWeight.SemiBold else FontWeight.Normal
+                        fontWeight = if (selectedTab == 0) FontWeight.SemiBold else FontWeight.Normal,
+                        color = textColor
                     ) 
                 }
             )
@@ -94,7 +102,8 @@ fun LibraryScreen(
                 text = { 
                     Text(
                         "Álbuns",
-                        fontWeight = if (selectedTab == 1) FontWeight.SemiBold else FontWeight.Normal
+                        fontWeight = if (selectedTab == 1) FontWeight.SemiBold else FontWeight.Normal,
+                        color = textColor
                     ) 
                 }
             )
@@ -104,7 +113,8 @@ fun LibraryScreen(
                 text = { 
                     Text(
                         "Artistas",
-                        fontWeight = if (selectedTab == 2) FontWeight.SemiBold else FontWeight.Normal
+                        fontWeight = if (selectedTab == 2) FontWeight.SemiBold else FontWeight.Normal,
+                        color = textColor
                     ) 
                 }
             )
@@ -115,10 +125,14 @@ fun LibraryScreen(
             0 -> SongsListView(
                 songs = songs,
                 isLoading = isLoading,
-                onSongClick = onSongClick
+                onSongClick = onSongClick,
+                backgroundColor = backgroundColor,
+                surfaceColor = surfaceColor,
+                textColor = textColor,
+                secondaryTextColor = secondaryTextColor
             )
-            1 -> AlbumsView(songs = songs)
-            2 -> ArtistsView(songs = songs)
+            1 -> AlbumsView(songs = songs, surfaceColor = surfaceColor, textColor = textColor, secondaryTextColor = secondaryTextColor)
+            2 -> ArtistsView(songs = songs, surfaceColor = surfaceColor, textColor = textColor, secondaryTextColor = secondaryTextColor)
         }
     }
 }
@@ -127,7 +141,11 @@ fun LibraryScreen(
 fun SongsListView(
     songs: List<Song>,
     isLoading: Boolean,
-    onSongClick: (Song, List<Song>, Int) -> Unit
+    onSongClick: (Song, List<Song>, Int) -> Unit,
+    backgroundColor: Color,
+    surfaceColor: Color,
+    textColor: Color,
+    secondaryTextColor: Color
 ) {
     if (isLoading) {
         Box(
@@ -147,20 +165,20 @@ fun SongsListView(
                 Icon(
                     imageVector = Icons.Default.MusicNote,
                     contentDescription = null,
-                    tint = Color(0xFF8E8E93),
+                    tint = secondaryTextColor,
                     modifier = Modifier.size(64.dp)
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
                     text = "Nenhuma música encontrada",
                     style = MaterialTheme.typography.titleLarge,
-                    color = Color(0xFF8E8E93)
+                    color = secondaryTextColor
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = "Toque em atualizar para escanear",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color(0xFF8E8E93)
+                    color = secondaryTextColor
                 )
             }
         }
@@ -173,7 +191,10 @@ fun SongsListView(
             items(songs) { song ->
                 SongListItem(
                     song = song,
-                    onClick = { onSongClick(song, songs, songs.indexOf(song)) }
+                    onClick = { onSongClick(song, songs, songs.indexOf(song)) },
+                    surfaceColor = surfaceColor,
+                    textColor = textColor,
+                    secondaryTextColor = secondaryTextColor
                 )
             }
         }
@@ -183,7 +204,10 @@ fun SongsListView(
 @Composable
 fun SongListItem(
     song: Song,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    surfaceColor: Color,
+    textColor: Color,
+    secondaryTextColor: Color
 ) {
     Row(
         modifier = Modifier
@@ -196,7 +220,7 @@ fun SongListItem(
             modifier = Modifier
                 .size(50.dp)
                 .clip(RoundedCornerShape(8.dp))
-                .background(Color(0xFF1C1C1E)),
+                .background(surfaceColor),
             contentAlignment = Alignment.Center
         ) {
             if (song.albumArtUri != null) {
@@ -210,7 +234,7 @@ fun SongListItem(
                 Icon(
                     imageVector = Icons.Default.MusicNote,
                     contentDescription = null,
-                    tint = Color(0xFF8E8E93),
+                    tint = secondaryTextColor,
                     modifier = Modifier.size(20.dp)
                 )
             }
@@ -224,7 +248,7 @@ fun SongListItem(
             Text(
                 text = song.title,
                 style = MaterialTheme.typography.bodyLarge,
-                color = Color.White,
+                color = textColor,
                 fontSize = 16.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -232,7 +256,7 @@ fun SongListItem(
             Text(
                 text = song.artist,
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color(0xFF8E8E93),
+                color = secondaryTextColor,
                 fontSize = 14.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -242,14 +266,14 @@ fun SongListItem(
         Text(
             text = song.formattedDuration,
             style = MaterialTheme.typography.bodySmall,
-            color = Color(0xFF8E8E93),
+            color = secondaryTextColor,
             fontSize = 12.sp
         )
     }
 }
 
 @Composable
-fun AlbumsView(songs: List<Song>) {
+fun AlbumsView(songs: List<Song>, surfaceColor: Color, textColor: Color, secondaryTextColor: Color) {
     val albums = songs.groupBy { it.album }
 
     LazyColumn(
@@ -270,13 +294,13 @@ fun AlbumsView(songs: List<Song>) {
                     modifier = Modifier
                         .size(50.dp)
                         .clip(RoundedCornerShape(8.dp))
-                        .background(Color(0xFF1C1C1E)),
+                        .background(surfaceColor),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Default.Album,
                         contentDescription = null,
-                        tint = Color(0xFF8E8E93),
+                        tint = secondaryTextColor,
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -285,13 +309,13 @@ fun AlbumsView(songs: List<Song>) {
                     Text(
                         text = albumName,
                         style = MaterialTheme.typography.bodyLarge,
-                        color = Color.White,
+                        color = textColor,
                         fontSize = 16.sp
                     )
                     Text(
                         text = "${albumSongs.size} músicas",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color(0xFF8E8E93),
+                        color = secondaryTextColor,
                         fontSize = 14.sp
                     )
                 }
@@ -301,7 +325,7 @@ fun AlbumsView(songs: List<Song>) {
 }
 
 @Composable
-fun ArtistsView(songs: List<Song>) {
+fun ArtistsView(songs: List<Song>, surfaceColor: Color, textColor: Color, secondaryTextColor: Color) {
     val artists = songs.groupBy { it.artist }
 
     LazyColumn(
@@ -322,13 +346,13 @@ fun ArtistsView(songs: List<Song>) {
                     modifier = Modifier
                         .size(50.dp)
                         .clip(RoundedCornerShape(25.dp))
-                        .background(Color(0xFF1C1C1E)),
+                        .background(surfaceColor),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Default.Person,
                         contentDescription = null,
-                        tint = Color(0xFF8E8E93),
+                        tint = secondaryTextColor,
                         modifier = Modifier.size(20.dp)
                     )
                 }
@@ -337,13 +361,13 @@ fun ArtistsView(songs: List<Song>) {
                     Text(
                         text = artistName,
                         style = MaterialTheme.typography.bodyLarge,
-                        color = Color.White,
+                        color = textColor,
                         fontSize = 16.sp
                     )
                     Text(
                         text = "${artistSongs.size} músicas",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color(0xFF8E8E93),
+                        color = secondaryTextColor,
                         fontSize = 14.sp
                     )
                 }
