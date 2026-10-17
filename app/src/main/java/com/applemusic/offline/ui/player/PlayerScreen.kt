@@ -65,6 +65,7 @@ fun PlayerScreen(
     var blurredBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var vibrantColor by remember { mutableStateOf<Color?>(null) }
     var darkVibrantColor by remember { mutableStateOf<Color?>(null) }
+    var dominantColor by remember { mutableStateOf<Color?>(null) }
 
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -77,7 +78,7 @@ fun PlayerScreen(
                     val loader = ImageLoader(context)
                     val request = ImageRequest.Builder(context)
                         .data(uri)
-                        .allowHardware(false) // Importante para obter o bitmap
+                        .allowHardware(false)
                         .build()
 
                     val result = loader.execute(request)
@@ -85,16 +86,23 @@ fun PlayerScreen(
                         val drawable = result.drawable
                         if (drawable is BitmapDrawable) {
                             val bitmap = drawable.bitmap
+                            blurredBitmap = bitmap
 
-                            // Extrair cores com Palette
+                            // Extrair cores com Palette - múltiplas opções
                             val palette = Palette.from(bitmap).generate()
+
+                            // Tenta pegar a cor mais vibrante primeiro
                             vibrantColor = palette.vibrantSwatch?.let { Color(it.rgb) }
+                                ?: palette.lightVibrantSwatch?.let { Color(it.rgb) }
+                                ?: palette.dominantSwatch?.let { Color(it.rgb) }
+
+                            // Cor escura para o gradiente
                             darkVibrantColor = palette.darkVibrantSwatch?.let { Color(it.rgb) }
                                 ?: palette.darkMutedSwatch?.let { Color(it.rgb) }
                                 ?: palette.dominantSwatch?.let { Color(it.rgb) }
 
-                            // Criar bitmap para o fundo (será desfocado no composable)
-                            blurredBitmap = bitmap
+                            // Cor dominante geral
+                            dominantColor = palette.dominantSwatch?.let { Color(it.rgb) }
                         }
                     }
                 } catch (e: Exception) {
@@ -113,63 +121,63 @@ fun PlayerScreen(
             .fillMaxSize()
             .background(backgroundColor)
     ) {
-        // CAMADA 1: Fundo com blur (Android 12+)
+        // CAMADA 1: Fundo com blur suave (estilo Apple)
         blurredBitmap?.let { bitmap ->
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                // Blur nativo do Android 12+
+                // Blur mais suave, alpha maior para manter cores
                 Image(
                     bitmap = bitmap.asImageBitmap(),
                     contentDescription = null,
                     modifier = Modifier
                         .fillMaxSize()
-                        .blur(radius = 100.dp), // Blur pesado estilo Apple
+                        .blur(radius = 60.dp), // Blur mais suave
                     contentScale = ContentScale.Crop,
-                    alpha = 0.5f
+                    alpha = 0.8f // Alpha maior para cores aparecerem
                 )
             } else {
-                // Fallback para Android antigo: imagem com alpha baixo
                 Image(
                     bitmap = bitmap.asImageBitmap(),
                     contentDescription = null,
                     modifier = Modifier
                         .fillMaxSize()
-                        .alpha(0.3f),
+                        .alpha(0.6f),
                     contentScale = ContentScale.Crop
                 )
             }
         }
 
-        // CAMADA 2: Gradiente com cores da música
+        // CAMADA 2: Gradiente radial com cores vibrantes da capa
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(
+                            vibrantColor?.copy(alpha = 0.4f) ?: Color.Transparent,
+                            dominantColor?.copy(alpha = 0.3f) ?: Color.Transparent,
+                            darkVibrantColor?.copy(alpha = 0.6f) ?: Color.Transparent,
+                            backgroundColor
+                        ),
+                        center = androidx.compose.ui.geometry.Offset(0.5f, 0.3f), // Centro superior
+                        radius = 1200f
+                    )
+                )
+        )
+
+        // CAMADA 3: Overlay sutil para legibilidade (não muito escuro)
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
-                            vibrantColor?.copy(alpha = 0.3f) ?: Color.Transparent,
-                            darkVibrantColor?.copy(alpha = 0.5f) ?: Color.Transparent,
-                            backgroundColor
+                            Color.Black.copy(alpha = if (isDarkTheme) 0.2f else 0.1f),
+                            Color.Transparent,
+                            Color.Black.copy(alpha = if (isDarkTheme) 0.3f else 0.15f)
                         )
                     )
                 )
         )
-
-        // CAMADA 3: Scrim para legibilidade (modo escuro)
-        if (isDarkTheme) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                Color.Black.copy(alpha = 0.4f),
-                                Color.Black.copy(alpha = 0.2f),
-                                Color.Black.copy(alpha = 0.5f)
-                            )
-                        )
-                    )
-            )
-        }
 
         // CONTEÚDO
         Column(
@@ -208,7 +216,7 @@ fun PlayerScreen(
             Spacer(modifier = Modifier.height(20.dp))
 
             currentSong?.let { song ->
-                // Capa do álbum
+                // Capa
                 val elevation = if (playbackState is PlaybackState.Playing) 8.dp else 4.dp
 
                 Box(
