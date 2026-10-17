@@ -57,9 +57,11 @@ fun PlayerScreen(
     val repeatMode by viewModel.repeatMode.collectAsState()
 
     val isDarkTheme = isSystemInDarkTheme()
-    val backgroundColor = if (isDarkTheme) Color(0xFF000000) else Color(0xFFFFFFFF)
-    val textColor = if (isDarkTheme) Color(0xFFFFFFFF) else Color(0xFF000000)
-    val secondaryTextColor = Color(0xFF8E8E93)
+
+    // COR PRINCIPAL: Sempre branco no player (igual Apple Music)
+    val primaryTextColor = Color.White
+    val secondaryTextColor = Color.White.copy(alpha = 0.7f)
+    val backgroundColor = Color.Black // Fundo base preto para o blur funcionar
 
     // Estados para blur e cores
     var blurredBitmap by remember { mutableStateOf<Bitmap?>(null) }
@@ -70,7 +72,6 @@ fun PlayerScreen(
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
-    // Carregar imagem e extrair cores quando a música muda
     LaunchedEffect(currentSong?.albumArtUri) {
         currentSong?.albumArtUri?.let { uri ->
             scope.launch {
@@ -88,25 +89,21 @@ fun PlayerScreen(
                             val bitmap = drawable.bitmap
                             blurredBitmap = bitmap
 
-                            // Extrair cores com Palette - múltiplas opções
                             val palette = Palette.from(bitmap).generate()
 
-                            // Tenta pegar a cor mais vibrante primeiro
                             vibrantColor = palette.vibrantSwatch?.let { Color(it.rgb) }
                                 ?: palette.lightVibrantSwatch?.let { Color(it.rgb) }
                                 ?: palette.dominantSwatch?.let { Color(it.rgb) }
 
-                            // Cor escura para o gradiente
                             darkVibrantColor = palette.darkVibrantSwatch?.let { Color(it.rgb) }
                                 ?: palette.darkMutedSwatch?.let { Color(it.rgb) }
                                 ?: palette.dominantSwatch?.let { Color(it.rgb) }
 
-                            // Cor dominante geral
                             dominantColor = palette.dominantSwatch?.let { Color(it.rgb) }
                         }
                     }
                 } catch (e: Exception) {
-                    // Ignora erros
+                    // Ignora
                 }
             }
         }
@@ -121,18 +118,17 @@ fun PlayerScreen(
             .fillMaxSize()
             .background(backgroundColor)
     ) {
-        // CAMADA 1: Fundo com blur suave (estilo Apple)
+        // CAMADA 1: Blur da capa
         blurredBitmap?.let { bitmap ->
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                // Blur mais suave, alpha maior para manter cores
                 Image(
                     bitmap = bitmap.asImageBitmap(),
                     contentDescription = null,
                     modifier = Modifier
                         .fillMaxSize()
-                        .blur(radius = 60.dp), // Blur mais suave
+                        .blur(radius = 60.dp),
                     contentScale = ContentScale.Crop,
-                    alpha = 0.8f // Alpha maior para cores aparecerem
+                    alpha = 0.8f
                 )
             } else {
                 Image(
@@ -146,7 +142,7 @@ fun PlayerScreen(
             }
         }
 
-        // CAMADA 2: Gradiente radial com cores vibrantes da capa
+        // CAMADA 2: Gradiente radial com cores
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -158,22 +154,22 @@ fun PlayerScreen(
                             darkVibrantColor?.copy(alpha = 0.6f) ?: Color.Transparent,
                             backgroundColor
                         ),
-                        center = androidx.compose.ui.geometry.Offset(0.5f, 0.3f), // Centro superior
+                        center = androidx.compose.ui.geometry.Offset(0.5f, 0.3f),
                         radius = 1200f
                     )
                 )
         )
 
-        // CAMADA 3: Overlay sutil para legibilidade (não muito escuro)
+        // CAMADA 3: Overlay escuro sutil (sempre, para legibilidade)
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
-                            Color.Black.copy(alpha = if (isDarkTheme) 0.2f else 0.1f),
+                            Color.Black.copy(alpha = 0.3f),
                             Color.Transparent,
-                            Color.Black.copy(alpha = if (isDarkTheme) 0.3f else 0.15f)
+                            Color.Black.copy(alpha = 0.4f)
                         )
                     )
                 )
@@ -197,7 +193,7 @@ fun PlayerScreen(
                     Icon(
                         imageVector = Icons.Default.KeyboardArrowDown,
                         contentDescription = "Voltar",
-                        tint = textColor,
+                        tint = primaryTextColor,
                         modifier = Modifier.size(32.dp)
                     )
                 }
@@ -205,7 +201,7 @@ fun PlayerScreen(
                 Text(
                     text = "Tocando Agora",
                     style = MaterialTheme.typography.labelMedium,
-                    color = textColor.copy(alpha = 0.7f),
+                    color = secondaryTextColor,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium
                 )
@@ -262,12 +258,12 @@ fun PlayerScreen(
 
                 Spacer(modifier = Modifier.height(32.dp))
 
-                // Informações
+                // Título - BRANCO
                 Text(
                     text = song.title,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
-                    color = textColor,
+                    color = primaryTextColor,
                     fontSize = 22.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -277,10 +273,11 @@ fun PlayerScreen(
 
                 Spacer(modifier = Modifier.height(6.dp))
 
+                // Artista - BRANCO 70%
                 Text(
                     text = song.artist,
                     style = MaterialTheme.typography.titleMedium,
-                    color = textColor.copy(alpha = 0.7f),
+                    color = secondaryTextColor,
                     fontSize = 18.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -299,9 +296,9 @@ fun PlayerScreen(
                         },
                         modifier = Modifier.fillMaxWidth(),
                         colors = SliderDefaults.colors(
-                            thumbColor = textColor,
-                            activeTrackColor = textColor,
-                            inactiveTrackColor = textColor.copy(alpha = 0.3f)
+                            thumbColor = primaryTextColor,
+                            activeTrackColor = primaryTextColor,
+                            inactiveTrackColor = primaryTextColor.copy(alpha = 0.3f)
                         )
                     )
 
@@ -312,13 +309,13 @@ fun PlayerScreen(
                         Text(
                             text = viewModel.formatTime(currentPosition),
                             style = MaterialTheme.typography.labelSmall,
-                            color = textColor.copy(alpha = 0.7f),
+                            color = secondaryTextColor,
                             fontSize = 12.sp
                         )
                         Text(
                             text = viewModel.formatTime(duration),
                             style = MaterialTheme.typography.labelSmall,
-                            color = textColor.copy(alpha = 0.7f),
+                            color = secondaryTextColor,
                             fontSize = 12.sp
                         )
                     }
@@ -326,7 +323,7 @@ fun PlayerScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Controles
+                // Controles - BRANCOS
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly,
@@ -336,7 +333,7 @@ fun PlayerScreen(
                         Icon(
                             imageVector = Icons.Default.Shuffle,
                             contentDescription = "Shuffle",
-                            tint = if (isShuffleEnabled) AppleRed else textColor.copy(alpha = 0.7f),
+                            tint = if (isShuffleEnabled) AppleRed else secondaryTextColor,
                             modifier = Modifier.size(22.dp)
                         )
                     }
@@ -345,16 +342,19 @@ fun PlayerScreen(
                         Icon(
                             imageVector = Icons.Default.SkipPrevious,
                             contentDescription = "Previous",
-                            tint = textColor,
+                            tint = primaryTextColor,
                             modifier = Modifier.size(32.dp)
                         )
                     }
 
+                    // Botão play - BRANCO com sombra
                     FloatingActionButton(
                         onClick = { viewModel.playPause() },
-                        modifier = Modifier.size(64.dp),
-                        containerColor = textColor,
-                        contentColor = backgroundColor,
+                        modifier = Modifier
+                            .size(64.dp)
+                            .shadow(8.dp, CircleShape),
+                        containerColor = Color.White,
+                        contentColor = Color.Black,
                         shape = CircleShape
                     ) {
                         Icon(
@@ -368,7 +368,7 @@ fun PlayerScreen(
                         Icon(
                             imageVector = Icons.Default.SkipNext,
                             contentDescription = "Next",
-                            tint = textColor,
+                            tint = primaryTextColor,
                             modifier = Modifier.size(32.dp)
                         )
                     }
@@ -382,7 +382,7 @@ fun PlayerScreen(
                             },
                             contentDescription = "Repeat",
                             tint = when (repeatMode) {
-                                RepeatMode.OFF -> textColor.copy(alpha = 0.7f)
+                                RepeatMode.OFF -> secondaryTextColor
                                 else -> AppleRed
                             },
                             modifier = Modifier.size(22.dp)
