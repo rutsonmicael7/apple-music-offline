@@ -2,6 +2,7 @@ package com.applemusic.offline.ui.search
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -13,8 +14,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.applemusic.offline.data.model.Song
@@ -30,45 +33,51 @@ fun SearchScreen(
     val searchResults by viewModel.searchResults.collectAsState()
     val recentSearches by viewModel.recentSearches.collectAsState()
 
+    // Cores adaptativas
+    val isDarkTheme = isSystemInDarkTheme()
+    val backgroundColor = if (isDarkTheme) Color(0xFF000000) else Color(0xFFFFFFFF)
+    val surfaceColor = if (isDarkTheme) Color(0xFF1C1C1E) else Color(0xFFF2F2F7)
+    val textColor = if (isDarkTheme) Color(0xFFFFFFFF) else Color(0xFF000000)
+    val secondaryTextColor = Color(0xFF8E8E93)
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF1C1C1E))
+            .background(backgroundColor)
     ) {
-        // Cabeçalho com busca
+        // Cabeçalho
+        Text(
+            text = "Buscar",
+            style = MaterialTheme.typography.headlineLarge,
+            color = textColor,
+            fontSize = 34.sp,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+        )
+
+        // Campo de busca
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = { /* Voltar */ }) {
-                Icon(
-                    imageVector = Icons.Default.ArrowBack,
-                    contentDescription = "Back",
-                    tint = Color.White
-                )
-            }
-
-            Spacer(modifier = Modifier.width(8.dp))
-
             TextField(
                 value = searchQuery,
                 onValueChange = { viewModel.onQueryChange(it) },
                 modifier = Modifier
-                    .weight(1f)
+                    .fillMaxWidth()
                     .clip(RoundedCornerShape(10.dp)),
                 placeholder = {
                     Text(
-                        text = "Search your library",
-                        color = Color(0xFF8E8E93)
+                        text = "Artistas, Músicas, Letras e mais",
+                        color = secondaryTextColor
                     )
                 },
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.Search,
                         contentDescription = "Search",
-                        tint = Color(0xFF8E8E93)
+                        tint = secondaryTextColor
                     )
                 },
                 trailingIcon = {
@@ -77,16 +86,16 @@ fun SearchScreen(
                             Icon(
                                 imageVector = Icons.Default.Close,
                                 contentDescription = "Clear",
-                                tint = Color(0xFF8E8E93)
+                                tint = secondaryTextColor
                             )
                         }
                     }
                 },
                 colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color(0xFF2C2C2E),
-                    unfocusedContainerColor = Color(0xFF2C2C2E),
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White,
+                    focusedContainerColor = surfaceColor,
+                    unfocusedContainerColor = surfaceColor,
+                    focusedTextColor = textColor,
+                    unfocusedTextColor = textColor,
                     cursorColor = AppleRed,
                     focusedIndicatorColor = Color.Transparent,
                     unfocusedIndicatorColor = Color.Transparent
@@ -97,57 +106,39 @@ fun SearchScreen(
 
         // Conteúdo
         if (searchQuery.isEmpty()) {
-            if (recentSearches.isNotEmpty()) {
-                Text(
-                    text = "Recently Searched",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = Color.White,
-                    modifier = Modifier.padding(16.dp)
-                )
-
-                LazyColumn(
-                    contentPadding = PaddingValues(horizontal = 16.dp)
+            // Estado vazio
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    items(recentSearches.size) { index ->
-                        RecentSearchItem(
-                            query = recentSearches[index],
-                            onClick = { viewModel.onQueryChange(recentSearches[index]) }
-                        )
-                    }
-                }
-            } else {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Search,
-                            contentDescription = null,
-                            tint = Color(0xFF8E8E93),
-                            modifier = Modifier.size(64.dp)
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = "Search Apple Music",
-                            style = MaterialTheme.typography.titleLarge,
-                            color = Color(0xFF8E8E93)
-                        )
-                    }
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = null,
+                        tint = secondaryTextColor,
+                        modifier = Modifier.size(64.dp)
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "Buscar na biblioteca",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = secondaryTextColor
+                    )
                 }
             }
         } else {
+            // Resultados
             if (searchResults.isEmpty()) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "No results found",
+                        text = "Nenhum resultado",
                         style = MaterialTheme.typography.titleLarge,
-                        color = Color(0xFF8E8E93)
+                        color = secondaryTextColor
                     )
                 }
             } else {
@@ -159,7 +150,10 @@ fun SearchScreen(
                         val song = searchResults[index]
                         SearchResultItem(
                             song = song,
-                            onClick = { onSongClick(song, searchResults, index) }
+                            onClick = { onSongClick(song, searchResults, index) },
+                            surfaceColor = surfaceColor,
+                            textColor = textColor,
+                            secondaryTextColor = secondaryTextColor
                         )
                     }
                 }
@@ -169,36 +163,12 @@ fun SearchScreen(
 }
 
 @Composable
-fun RecentSearchItem(
-    query: String,
-    onClick: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            imageVector = Icons.Default.History,
-            contentDescription = null,
-            tint = Color(0xFF8E8E93),
-            modifier = Modifier.size(20.dp)
-        )
-        Spacer(modifier = Modifier.width(16.dp))
-        Text(
-            text = query,
-            style = MaterialTheme.typography.bodyLarge,
-            color = Color.White
-        )
-    }
-}
-
-@Composable
 fun SearchResultItem(
     song: Song,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    surfaceColor: Color,
+    textColor: Color,
+    secondaryTextColor: Color
 ) {
     Row(
         modifier = Modifier
@@ -211,20 +181,21 @@ fun SearchResultItem(
             modifier = Modifier
                 .size(48.dp)
                 .clip(RoundedCornerShape(6.dp))
-                .background(Color(0xFF2C2C2E)),
+                .background(surfaceColor),
             contentAlignment = Alignment.Center
         ) {
             if (song.albumArtUri != null) {
                 AsyncImage(
                     model = song.albumArtUri,
                     contentDescription = "Album art",
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
                 )
             } else {
                 Icon(
                     imageVector = Icons.Default.MusicNote,
                     contentDescription = null,
-                    tint = Color(0xFF8E8E93)
+                    tint = secondaryTextColor
                 )
             }
         }
@@ -235,14 +206,14 @@ fun SearchResultItem(
             Text(
                 text = song.title,
                 style = MaterialTheme.typography.bodyLarge,
-                color = Color.White,
+                color = textColor,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
             Text(
                 text = "${song.artist} • ${song.album}",
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color(0xFF8E8E93),
+                color = secondaryTextColor,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
