@@ -7,6 +7,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -19,6 +21,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -29,6 +32,7 @@ import com.applemusic.offline.ui.player.PlayerScreen
 import com.applemusic.offline.ui.search.SearchScreen
 import com.applemusic.offline.ui.theme.AppleMusicOfflineTheme
 import com.applemusic.offline.ui.theme.AppleRed
+import com.applemusic.offline.viewmodel.LibraryViewModel
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -38,14 +42,13 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.RequestPermission()
     ) { isGranted: Boolean ->
         if (isGranted) {
-            // Permissão concedida, recarregar biblioteca
+            // Permissão concedida, app vai escanear automaticamente
         }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Solicitar permissão de armazenamento
         requestStoragePermission()
 
         setContent {
@@ -69,7 +72,7 @@ class MainActivity : ComponentActivity() {
 
         when {
             ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED -> {
-                // Permissão já concedida
+                // Já tem permissão
             }
             else -> {
                 requestPermissionLauncher.launch(permission)
@@ -78,6 +81,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+@OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun AppleMusicApp() {
     val navController = rememberNavController()
@@ -127,12 +131,18 @@ fun AppleMusicApp() {
             }
         }
     ) { innerPadding ->
-        NavHost(
+        AnimatedNavHost(
             navController = navController,
             startDestination = Screen.Library.route,
             modifier = Modifier.padding(innerPadding)
         ) {
-            composable(Screen.Library.route) {
+            composable(
+                Screen.Library.route,
+                enterTransition = { slideInHorizontally(initialOffsetX = { -it }, animationSpec = tween(300)) },
+                exitTransition = { slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(300)) },
+                popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }, animationSpec = tween(300)) },
+                popExitTransition = { slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(300)) }
+            ) {
                 LibraryScreen(
                     onSongClick = { song, songs, index ->
                         navController.navigate(Screen.Player.route)
@@ -142,14 +152,26 @@ fun AppleMusicApp() {
                     }
                 )
             }
-            composable(Screen.Search.route) {
+            composable(
+                Screen.Search.route,
+                enterTransition = { slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(300)) },
+                exitTransition = { slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(300)) },
+                popEnterTransition = { slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(300)) },
+                popExitTransition = { slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(300)) }
+            ) {
                 SearchScreen(
                     onSongClick = { song, songs, index ->
                         navController.navigate(Screen.Player.route)
                     }
                 )
             }
-            composable(Screen.Player.route) {
+            composable(
+                Screen.Player.route,
+                enterTransition = { slideInVertically(initialOffsetY = { it }, animationSpec = tween(400)) },
+                exitTransition = { slideOutVertically(targetOffsetY = { it }, animationSpec = tween(400)) },
+                popEnterTransition = { slideInVertically(initialOffsetY = { it }, animationSpec = tween(400)) },
+                popExitTransition = { slideOutVertically(targetOffsetY = { it }, animationSpec = tween(400)) }
+            ) {
                 PlayerScreen(
                     onNavigateBack = {
                         navController.popBackStack()
