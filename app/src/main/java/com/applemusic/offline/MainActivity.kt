@@ -7,8 +7,6 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.*
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -114,14 +112,6 @@ fun AppleMusicApp() {
                                 }
                                 launchSingleTop = true
                                 restoreState = true
-
-                                // Animação de transição
-                                anim {
-                                    slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(300))
-                                }
-                                popAnim {
-                                    slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(300))
-                                }
                             }
                         },
                         colors = NavigationBarItemDefaults.colors(
