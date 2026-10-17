@@ -45,7 +45,6 @@ import com.applemusic.offline.viewmodel.PlayerViewModel
 import com.applemusic.offline.viewmodel.PlaybackState
 import com.applemusic.offline.viewmodel.RepeatMode
 import kotlinx.coroutines.launch
-import kotlin.math.abs
 
 @Composable
 fun PlayerScreen(
@@ -63,9 +62,11 @@ fun PlayerScreen(
     val secondaryTextColor = Color(0xB3FFFFFF)
     val backgroundColor = Color(0xFF1a1a1a)
 
-    var blurredBitmap by remember { mutableStateOf<Bitmap?>(null) }
+    // Estados
+    var backgroundBitmap by remember { mutableStateOf<Bitmap?>(null) }
     var targetColor by remember { mutableStateOf(Color(0xFF1a1a1a)) }
 
+    // Animação 1000ms
     val animatedColor by animateColorAsState(
         targetValue = targetColor,
         animationSpec = tween(durationMillis = 1000, easing = FastOutSlowInEasing),
@@ -75,6 +76,7 @@ fun PlayerScreen(
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
+    // SISTEMA REAL DA APPLE: extrair cor quando música muda
     LaunchedEffect(currentSong?.albumArtUri) {
         currentSong?.albumArtUri?.let { uri ->
             scope.launch {
@@ -90,9 +92,13 @@ fun PlayerScreen(
                         val drawable = result.drawable
                         if (drawable is BitmapDrawable) {
                             val bitmap = drawable.bitmap
-                            blurredBitmap = bitmap
-                            val appleColor = extractAppleStyleColor(bitmap)
-                            targetColor = Color(appleColor)
+
+                            // 1. Extrair cor (método Apple real)
+                            val extractedColor = extractAppleColor(bitmap)
+                            targetColor = Color(extractedColor)
+
+                            // 2. Criar background com blur pesado (método Apple)
+                            backgroundBitmap = createBlurredBackground(bitmap, extractedColor)
                         }
                     }
                 } catch (e: Exception) { }
@@ -103,36 +109,30 @@ fun PlayerScreen(
     BackHandler { onNavigateBack() }
 
     Box(modifier = Modifier.fillMaxSize().background(backgroundColor)) {
-        // LAYER 1: Gradiente radial com cor vibrante
+        // LAYER 1: Background com blur pesado + overlay de cor
+        backgroundBitmap?.let { bitmap ->
+            Image(
+                bitmap = bitmap.asImageBitmap(),
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+        }
+
+        // LAYER 2: Gradiente radial com cor animada
         Box(
             modifier = Modifier.fillMaxSize().background(
                 Brush.radialGradient(
-                    colors = listOf(animatedColor, animatedColor, darkenColor(animatedColor, 0.5f)),
+                    colors = listOf(
+                        animatedColor.copy(alpha = 0.3f),
+                        animatedColor.copy(alpha = 0.15f),
+                        backgroundColor
+                    ),
                     center = androidx.compose.ui.geometry.Offset(0.5f, 0.5f),
                     radius = 1500f
                 )
             )
         )
-
-        // LAYER 2: Blur da capa com PorterDuff OVERLAY (efeito Apple!)
-        blurredBitmap?.let { bitmap ->
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                // Técnica: blur + overlay color = efeito glass
-                Image(
-                    bitmap = bitmap.asImageBitmap(),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .blur(50.dp)
-                        .alpha(0.5f),
-                    contentScale = ContentScale.Crop,
-                    colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(
-                        animatedColor.copy(alpha = 0.3f),
-                        blendMode = androidx.compose.ui.graphics.BlendMode.Overlay
-                    )
-                )
-            }
-        }
 
         // LAYER 3: Scrim variável
         Box(
@@ -148,7 +148,7 @@ fun PlayerScreen(
             )
         )
 
-        // LAYER 4: Gradientes de legibilidade (LinearGradient horizontal como no código Apple!)
+        // LAYER 4: Gradientes de legibilidade
         Box(
             modifier = Modifier.fillMaxWidth().height(200.dp).background(
                 Brush.verticalGradient(colors = listOf(Color.Black.copy(alpha = 0.7f), Color.Transparent))
@@ -159,9 +159,6 @@ fun PlayerScreen(
                 Brush.verticalGradient(colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.78f)))
             )
         )
-
-        // LAYER 5: Glass effect nas bordas (LinearGradient horizontal!)
-        GlassEffectOverlay()
 
         // CONTEÚDO
         Column(modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp)) {
@@ -254,57 +251,82 @@ fun PlayerScreen(
     }
 }
 
-// Glass effect com LinearGradient horizontal (como no código Apple!)
-@Composable
-fun GlassEffectOverlay() {
-    Box(modifier = Modifier.fillMaxSize()) {
-        // Topo: LinearGradient vertical
-        Box(
-            modifier = Modifier.fillMaxWidth().fillMaxHeight(0.25f).background(
-                Brush.verticalGradient(colors = listOf(Color.White.copy(alpha = 35f/255f), Color.Transparent))
-            )
-        )
-        // Esquerda: LinearGradient horizontal!
-        Box(
-            modifier = Modifier.fillMaxHeight().fillMaxWidth(0.08f).background(
-                Brush.horizontalGradient(colors = listOf(Color.White.copy(alpha = 20f/255f), Color.Transparent))
-            )
-        )
-        // Direita: LinearGradient horizontal!
-        Box(
-            modifier = Modifier.fillMaxHeight().fillMaxWidth(0.08f).align(Alignment.CenterEnd).background(
-                Brush.horizontalGradient(colors = listOf(Color.Transparent, Color.White.copy(alpha = 20f/255f)))
-            )
-        )
-        // Fundo: LinearGradient vertical
-        Box(
-            modifier = Modifier.fillMaxWidth().fillMaxHeight(0.15f).align(Alignment.BottomCenter).background(
-                Brush.verticalGradient(colors = listOf(Color.Transparent, Color.White.copy(alpha = 15f/255f)))
-            )
-        )
-    }
+// SISTEMA REAL DA APPLE: Extrair cor
+private fun extractAppleColor(bitmap: Bitmap): Int {
+    // 1. REDUZ PELA METADE (como a Apple faz)
+    val reduced = Bitmap.createScaledBitmap(
+        bitmap,
+        bitmap.width / 2,
+        bitmap.height / 2,
+        true  // filter = true (cria blur suave)
+    )
+
+    // 2. Extrai cor média do bitmap reduzido
+    val avgColor = calculateAverageColor(reduced)
+
+    // 3. Ajusta saturação +30%, brilho -10%
+    return adjustColor(avgColor)
 }
 
-private fun extractAppleStyleColor(bitmap: Bitmap): Int {
-    val small = Bitmap.createScaledBitmap(bitmap, 50, 50, true)
-    var r = 0f; var g = 0f; var b = 0f; var total = 0f
-    val cx = small.width / 2; val cy = small.height / 2
-    for (x in 0 until small.width step 2) {
-        for (y in 0 until small.height step 2) {
-            val pixel = small.getPixel(x, y)
-            val weight = 1f - (abs(x - cx) + abs(y - cy)).toFloat() / (small.width + small.height)
-            r += AndroidColor.red(pixel) * weight; g += AndroidColor.green(pixel) * weight; b += AndroidColor.blue(pixel) * weight; total += weight
-        }
+private fun calculateAverageColor(bitmap: Bitmap): Int {
+    val width = bitmap.width
+    val height = bitmap.height
+    val pixels = IntArray(width * height)
+
+    bitmap.getPixels(pixels, 0, width, 0, 0, width, height)
+
+    var r = 0L
+    var g = 0L  
+    var b = 0L
+
+    for (pixel in pixels) {
+        r += AndroidColor.red(pixel)
+        g += AndroidColor.green(pixel)
+        b += AndroidColor.blue(pixel)
     }
-    return increaseSaturation(AndroidColor.rgb((r/total).toInt(), (g/total).toInt(), (b/total).toInt()), 1.4f)
+
+    val count = pixels.size
+    return AndroidColor.rgb(
+        (r / count).toInt(),
+        (g / count).toInt(), 
+        (b / count).toInt()
+    )
 }
 
-private fun increaseSaturation(color: Int, factor: Float): Int {
-    val hsv = FloatArray(3); AndroidColor.colorToHSV(color, hsv)
-    hsv[1] = (hsv[1] * factor).coerceIn(0f, 1f); hsv[2] = (hsv[2] * 0.85f).coerceIn(0f, 1f)
+private fun adjustColor(color: Int): Int {
+    val hsv = FloatArray(3)
+    AndroidColor.colorToHSV(color, hsv)
+
+    // Saturação +30%
+    hsv[1] = (hsv[1] * 1.3f).coerceIn(0f, 1f)
+
+    // Brilho -10%
+    hsv[2] = (hsv[2] * 0.9f).coerceIn(0f, 1f)
+
     return AndroidColor.HSVToColor(hsv)
 }
 
-private fun darkenColor(color: Color, factor: Float): Color {
-    return Color(color.red * factor, color.green * factor, color.blue * factor, color.alpha)
+// Criar background com blur pesado (método Apple)
+private fun createBlurredBackground(bitmap: Bitmap, color: Int): Bitmap {
+    // Reduz MUITO para blur pesado (25x25)
+    val tiny = Bitmap.createScaledBitmap(bitmap, 25, 25, true)
+
+    // Escala de volta com filtro (cria blur)
+    val blurred = Bitmap.createScaledBitmap(tiny, 1000, 1000, true)
+
+    // Cria bitmap final com overlay de cor
+    val result = Bitmap.createBitmap(1000, 1000, Bitmap.Config.ARGB_8888)
+    val canvas = android.graphics.Canvas(result)
+
+    // Desenha blur
+    canvas.drawBitmap(blurred, 0f, 0f, null)
+
+    // Overlay com cor vibrante (alpha 40%)
+    val colorPaint = android.graphics.Paint().apply {
+        this.color = color
+        alpha = 100  // ~40%
+    }
+    canvas.drawRect(0f, 0f, 1000f, 1000f, colorPaint)
+
+    return result
 }
