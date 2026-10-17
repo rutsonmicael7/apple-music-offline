@@ -77,11 +77,11 @@ fun LibraryScreen(
         TabRow(
             selectedTabIndex = selectedTab,
             containerColor = backgroundColor,
-            contentColor = textColor,
+            contentColor = AppleRed, // Cor de seleção é o vermelho Apple
             indicator = { tabPositions ->
                 TabRowDefaults.Indicator(
                     modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
-                    color = AppleRed
+                    color = AppleRed // Indicador vermelho
                 )
             }
         ) {
@@ -92,7 +92,7 @@ fun LibraryScreen(
                     Text(
                         "Músicas",
                         fontWeight = if (selectedTab == 0) FontWeight.SemiBold else FontWeight.Normal,
-                        color = textColor
+                        color = if (selectedTab == 0) AppleRed else secondaryTextColor // Selecionado = vermelho
                     ) 
                 }
             )
@@ -103,7 +103,7 @@ fun LibraryScreen(
                     Text(
                         "Álbuns",
                         fontWeight = if (selectedTab == 1) FontWeight.SemiBold else FontWeight.Normal,
-                        color = textColor
+                        color = if (selectedTab == 1) AppleRed else secondaryTextColor
                     ) 
                 }
             )
@@ -114,7 +114,7 @@ fun LibraryScreen(
                     Text(
                         "Artistas",
                         fontWeight = if (selectedTab == 2) FontWeight.SemiBold else FontWeight.Normal,
-                        color = textColor
+                        color = if (selectedTab == 2) AppleRed else secondaryTextColor
                     ) 
                 }
             )
