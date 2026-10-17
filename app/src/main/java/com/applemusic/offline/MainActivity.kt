@@ -122,7 +122,6 @@ fun AppleMusicApp() {
     val textColor = if (isDarkTheme) Color(0xFFFFFFFF) else Color(0xFF000000)
     val secondaryTextColor = Color(0xFF8E8E93)
 
-    // Observa estado do player
     val currentSong by playerViewModel.currentSong.collectAsState()
     val playbackState by playerViewModel.playbackState.collectAsState()
 
@@ -135,7 +134,7 @@ fun AppleMusicApp() {
         Scaffold(
             bottomBar = {
                 Column {
-                    // Mini Player (se tiver música tocando e player não estiver visível)
+                    // Mini Player
                     if (currentSong != null && !isPlayerVisible) {
                         MiniPlayer(
                             song = currentSong!!,
@@ -151,7 +150,8 @@ fun AppleMusicApp() {
                     // Navigation Bar
                     NavigationBar(
                         containerColor = surfaceColor,
-                        contentColor = textColor
+                        contentColor = textColor,
+                        tonalElevation = 0.dp // Remove elevação que causa sombra
                     ) {
                         val navBackStackEntry by navController.currentBackStackEntryAsState()
                         val currentDestination = navBackStackEntry?.destination
@@ -180,7 +180,7 @@ fun AppleMusicApp() {
                                     selectedTextColor = AppleRed,
                                     unselectedIconColor = secondaryTextColor,
                                     unselectedTextColor = secondaryTextColor,
-                                    indicatorColor = Color.Transparent
+                                    indicatorColor = Color.Transparent // SEM círculo de fundo
                                 )
                             )
                         }
@@ -212,7 +212,6 @@ fun AppleMusicApp() {
             }
         }
 
-        // Player em tela cheia
         if (isPlayerVisible) {
             PlayerScreen(
                 viewModel = playerViewModel,
@@ -239,7 +238,7 @@ fun MiniPlayer(
             .fillMaxWidth()
             .clickable(onClick = onClick),
         color = surfaceColor,
-        tonalElevation = 8.dp
+        tonalElevation = 0.dp
     ) {
         Row(
             modifier = Modifier
@@ -247,7 +246,6 @@ fun MiniPlayer(
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Capa
             Box(
                 modifier = Modifier
                     .size(40.dp)
@@ -275,7 +273,6 @@ fun MiniPlayer(
 
             Spacer(modifier = Modifier.width(12.dp))
 
-            // Info
             Column(
                 modifier = Modifier.weight(1f)
             ) {
@@ -297,7 +294,6 @@ fun MiniPlayer(
                 )
             }
 
-            // Play/Pause
             IconButton(onClick = onPlayPause) {
                 Icon(
                     imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
