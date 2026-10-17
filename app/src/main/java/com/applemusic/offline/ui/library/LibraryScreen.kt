@@ -40,17 +40,32 @@ fun LibraryScreen(
             .fillMaxSize()
             .background(Color.Black)
     ) {
-        // Cabeçalho estilo Apple Music
-        Text(
-            text = "Biblioteca",
-            style = MaterialTheme.typography.headlineLarge,
-            fontWeight = FontWeight.Bold,
-            color = Color.White,
-            fontSize = 34.sp,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-        )
+        // Cabeçalho com botão de atualizar
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Biblioteca",
+                style = MaterialTheme.typography.headlineLarge,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                fontSize = 34.sp
+            )
 
-        // Tabs estilo Apple Music
+            IconButton(onClick = { viewModel.refreshLibrary() }) {
+                Icon(
+                    imageVector = Icons.Default.Refresh,
+                    contentDescription = "Atualizar",
+                    tint = AppleRed
+                )
+            }
+        }
+
+        // Tabs
         var selectedTab by remember { mutableStateOf(0) }
         TabRow(
             selectedTabIndex = selectedTab,
@@ -143,7 +158,7 @@ fun SongsListView(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "Adicione músicas ao seu dispositivo",
+                    text = "Toque em atualizar para escanear",
                     style = MaterialTheme.typography.bodyMedium,
                     color = Color(0xFF8E8E93)
                 )
