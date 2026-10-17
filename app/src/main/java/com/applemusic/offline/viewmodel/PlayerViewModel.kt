@@ -1,7 +1,7 @@
 package com.applemusic.offline.viewmodel
 
 import android.media.MediaPlayer
-import android.net.Uri
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.applemusic.offline.data.model.Song
@@ -15,7 +15,6 @@ class PlayerViewModel @Inject constructor() : ViewModel() {
 
     private var mediaPlayer: MediaPlayer? = null
 
-    // Estado do player
     private val _playbackState = MutableStateFlow<PlaybackState>(PlaybackState.Idle)
     val playbackState: StateFlow<PlaybackState> = _playbackState.asStateFlow()
 
@@ -28,7 +27,6 @@ class PlayerViewModel @Inject constructor() : ViewModel() {
     private val _duration = MutableStateFlow(0L)
     val duration: StateFlow<Long> = _duration.asStateFlow()
 
-    // Estado da UI
     private val _isShuffleEnabled = MutableStateFlow(false)
     val isShuffleEnabled: StateFlow<Boolean> = _isShuffleEnabled.asStateFlow()
 
@@ -41,10 +39,11 @@ class PlayerViewModel @Inject constructor() : ViewModel() {
     private val _currentQueueIndex = MutableStateFlow(0)
     val currentQueueIndex: StateFlow<Int> = _currentQueueIndex.asStateFlow()
 
-    // Job para atualizar posição
     private var positionUpdateJob: Job? = null
 
     fun playSongs(songs: List<Song>, startIndex: Int = 0) {
+        if (songs.isEmpty() || startIndex >= songs.size) return
+
         _queue.value = songs
         _currentQueueIndex.value = startIndex
         playSong(songs[startIndex])
@@ -52,7 +51,11 @@ class PlayerViewModel @Inject constructor() : ViewModel() {
 
     private fun playSong(song: Song) {
         // Parar player anterior
-        mediaPlayer?.release()
+        try {
+            mediaPlayer?.release()
+        } catch (e: Exception) {
+            Log.e("PlayerViewModel", "Error releasing media player", e)
+        }
         positionUpdateJob?.cancel()
 
         _currentSong.value = song
@@ -67,19 +70,24 @@ class PlayerViewModel @Inject constructor() : ViewModel() {
                 _duration.value = this.duration.toLong()
                 _playbackState.value = PlaybackState.Playing
 
-                // Listener quando termina
                 setOnCompletionListener {
                     when (_repeatMode.value) {
                         RepeatMode.ONE -> playSong(song)
                         else -> skipToNext()
                     }
                 }
+
+                setOnErrorListener { _, what, extra ->
+                    Log.e("PlayerViewModel", "MediaPlayer error: $what, $extra")
+                    _playbackState.value = PlaybackState.Error("Erro de reprodução")
+                    true
+                }
             }
 
-            // Atualizar posição periodicamente
             startPositionUpdates()
 
         } catch (e: Exception) {
+            Log.e("PlayerViewModel", "Error playing song", e)
             _playbackState.value = PlaybackState.Error(e.message ?: "Erro ao reproduzir")
         }
     }
@@ -87,10 +95,14 @@ class PlayerViewModel @Inject constructor() : ViewModel() {
     private fun startPositionUpdates() {
         positionUpdateJob = viewModelScope.launch {
             while (isActive) {
-                mediaPlayer?.let { player ->
-                    if (player.isPlaying) {
-                        _currentPosition.value = player.currentPosition.toLong()
+                try {
+                    mediaPlayer?.let { player ->
+                        if (player.isPlaying) {
+                            _currentPosition.value = player.currentPosition.toLong()
+                        }
                     }
+                } catch (e: Exception) {
+                    // Ignora erros de posição
                 }
                 delay(500)
             }
@@ -98,24 +110,30 @@ class PlayerViewModel @Inject constructor() : ViewModel() {
     }
 
     fun playPause() {
-        mediaPlayer?.let { player ->
-            if (player.isPlaying) {
-                player.pause()
-                _playbackState.value = PlaybackState.Paused
-            } else {
-                player.start()
-                _playbackState.value = PlaybackState.Playing
+        try {
+            mediaPlayer?.let { player ->
+                if (player.isPlaying) {
+                    player.pause()
+                    _playbackState.value = PlaybackState.Paused
+                } else {
+                    player.start()
+                    _playbackState.value = PlaybackState.Playing
+                }
             }
+        } catch (e: Exception) {
+            Log.e("PlayerViewModel", "Error in playPause", e)
         }
     }
 
     fun skipToNext() {
+        if (_queue.value.isEmpty()) return
         val nextIndex = (_currentQueueIndex.value + 1) % _queue.value.size
         _currentQueueIndex.value = nextIndex
         _queue.value.getOrNull(nextIndex)?.let { playSong(it) }
     }
 
     fun skipToPrevious() {
+        if (_queue.value.isEmpty()) return
         val prevIndex = if (_currentQueueIndex.value > 0) {
             _currentQueueIndex.value - 1
         } else {
@@ -126,8 +144,12 @@ class PlayerViewModel @Inject constructor() : ViewModel() {
     }
 
     fun seekTo(position: Long) {
-        mediaPlayer?.seekTo(position.toInt())
-        _currentPosition.value = position
+        try {
+            mediaPlayer?.seekTo(position.toInt())
+            _currentPosition.value = position
+        } catch (e: Exception) {
+            Log.e("PlayerViewModel", "Error seeking", e)
+        }
     }
 
     fun toggleShuffle() {
@@ -150,12 +172,15 @@ class PlayerViewModel @Inject constructor() : ViewModel() {
 
     override fun onCleared() {
         super.onCleared()
-        mediaPlayer?.release()
+        try {
+            mediaPlayer?.release()
+        } catch (e: Exception) {
+            // Ignora
+        }
         positionUpdateJob?.cancel()
     }
 }
 
-// Estados do player
 sealed class PlaybackState {
     object Idle : PlaybackState()
     object Playing : PlaybackState()
