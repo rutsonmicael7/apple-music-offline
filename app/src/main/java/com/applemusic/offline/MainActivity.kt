@@ -8,6 +8,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -40,7 +41,7 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.RequestPermission()
     ) { isGranted: Boolean ->
         if (isGranted) {
-            // Permissão concedida, escanear automaticamente
+            // Permissão concedida
         }
     }
 
@@ -51,9 +52,10 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             AppleMusicOfflineTheme {
+                // Usa a cor de fundo do tema (preto no escuro, branco no claro)
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = Color.Black
+                    color = MaterialTheme.colorScheme.background
                 ) {
                     AppleMusicApp()
                 }
@@ -84,8 +86,16 @@ fun AppleMusicApp() {
     val navController = rememberNavController()
     val playerViewModel: PlayerViewModel = hiltViewModel()
 
-    // Estado do player (se está visível ou não)
     var isPlayerVisible by remember { mutableStateOf(false) }
+
+    // Detecta se está em modo escuro
+    val isDarkTheme = isSystemInDarkTheme()
+
+    // Cores adaptativas
+    val backgroundColor = if (isDarkTheme) Color(0xFF000000) else Color(0xFFFFFFFF)
+    val surfaceColor = if (isDarkTheme) Color(0xFF1C1C1E) else Color(0xFFF2F2F7)
+    val textColor = if (isDarkTheme) Color(0xFFFFFFFF) else Color(0xFF000000)
+    val secondaryTextColor = if (isDarkTheme) Color(0xFF8E8E93) else Color(0xFF8E8E93)
 
     val items = listOf(
         Screen.Library,
@@ -93,12 +103,11 @@ fun AppleMusicApp() {
     )
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // Conteúdo principal
         Scaffold(
             bottomBar = {
                 NavigationBar(
-                    containerColor = Color(0xFF1C1C1E),
-                    contentColor = Color.White
+                    containerColor = surfaceColor,
+                    contentColor = textColor
                 ) {
                     val navBackStackEntry by navController.currentBackStackEntryAsState()
                     val currentDestination = navBackStackEntry?.destination
@@ -125,8 +134,8 @@ fun AppleMusicApp() {
                             colors = NavigationBarItemDefaults.colors(
                                 selectedIconColor = AppleRed,
                                 selectedTextColor = AppleRed,
-                                unselectedIconColor = Color(0xFF8E8E93),
-                                unselectedTextColor = Color(0xFF8E8E93),
+                                unselectedIconColor = secondaryTextColor,
+                                unselectedTextColor = secondaryTextColor,
                                 indicatorColor = Color.Transparent
                             )
                         )
@@ -158,7 +167,7 @@ fun AppleMusicApp() {
             }
         }
 
-        // Player em tela cheia (overlay)
+        // Player overlay
         if (isPlayerVisible) {
             PlayerScreen(
                 viewModel = playerViewModel,
