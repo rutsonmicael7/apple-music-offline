@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
@@ -52,7 +53,29 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             AppleMusicOfflineTheme {
-                // Usa a cor de fundo do tema (preto no escuro, branco no claro)
+                // Detecta tema para configurar barras do sistema
+                val isDarkTheme = isSystemInDarkTheme()
+
+                // Configura barras do sistema (status bar e navigation bar)
+                LaunchedEffect(isDarkTheme) {
+                    val window = window
+                    val insetsController = WindowCompat.getInsetsController(window, window.decorView)
+
+                    // Status bar (barra de cima com hora, bateria)
+                    insetsController.isAppearanceLightStatusBars = !isDarkTheme
+                    window.statusBarColor = if (isDarkTheme) 
+                        android.graphics.Color.BLACK 
+                    else 
+                        android.graphics.Color.WHITE
+
+                    // Navigation bar (barra de baixo com gestos)
+                    insetsController.isAppearanceLightNavigationBars = !isDarkTheme
+                    window.navigationBarColor = if (isDarkTheme) 
+                        android.graphics.Color.BLACK 
+                    else 
+                        android.graphics.Color.WHITE
+                }
+
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
@@ -88,14 +111,13 @@ fun AppleMusicApp() {
 
     var isPlayerVisible by remember { mutableStateOf(false) }
 
-    // Detecta se está em modo escuro
     val isDarkTheme = isSystemInDarkTheme()
 
     // Cores adaptativas
     val backgroundColor = if (isDarkTheme) Color(0xFF000000) else Color(0xFFFFFFFF)
     val surfaceColor = if (isDarkTheme) Color(0xFF1C1C1E) else Color(0xFFF2F2F7)
     val textColor = if (isDarkTheme) Color(0xFFFFFFFF) else Color(0xFF000000)
-    val secondaryTextColor = if (isDarkTheme) Color(0xFF8E8E93) else Color(0xFF8E8E93)
+    val secondaryTextColor = Color(0xFF8E8E93)
 
     val items = listOf(
         Screen.Library,
