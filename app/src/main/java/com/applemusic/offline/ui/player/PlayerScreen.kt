@@ -1,8 +1,7 @@
 package com.applemusic.offline.ui.player
 
-import android.graphics.Bitmap
-import android.graphics.drawable.BitmapDrawable
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -16,9 +15,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -26,7 +23,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
-import coil.request.ImageRequest
 import com.applemusic.offline.data.model.Song
 import com.applemusic.offline.ui.theme.ApplePink
 import com.applemusic.offline.ui.theme.AppleRed
@@ -46,27 +42,35 @@ fun PlayerScreen(
     val isShuffleEnabled by viewModel.isShuffleEnabled.collectAsState()
     val repeatMode by viewModel.repeatMode.collectAsState()
 
-    // Cor dinâmica extraída da capa
-    var dominantColor by remember { mutableStateOf(Color(0xFF1C1C1E)) }
+    // Tema
+    val isDarkTheme = isSystemInDarkTheme()
+    val backgroundColor = if (isDarkTheme) Color(0xFF000000) else Color(0xFFFFFFFF)
+    val textColor = if (isDarkTheme) Color(0xFFFFFFFF) else Color(0xFF000000)
+    val secondaryTextColor = Color(0xFF8E8E93)
+
+    // Cor dominante da capa
+    var dominantColor by remember { mutableStateOf<Color?>(null) }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black)
+            .background(backgroundColor)
     ) {
-        // Fundo com gradiente dinâmico (simula o blur/vibrancy)
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            dominantColor.copy(alpha = 0.6f),
-                            Color.Black
+        // Fundo com gradiente baseado na cor da capa
+        dominantColor?.let { color ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                color.copy(alpha = 0.4f),
+                                backgroundColor
+                            )
                         )
                     )
-                )
-        )
+            )
+        }
 
         Column(
             modifier = Modifier
@@ -83,7 +87,7 @@ fun PlayerScreen(
                 Text(
                     text = "Tocando Agora",
                     style = MaterialTheme.typography.labelMedium,
-                    color = Color(0xFF8E8E93),
+                    color = secondaryTextColor,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium
                 )
@@ -92,7 +96,7 @@ fun PlayerScreen(
             Spacer(modifier = Modifier.height(20.dp))
 
             currentSong?.let { song ->
-                // Capa do álbum com sombra dinâmica
+                // Capa do álbum
                 val elevation = if (playbackState is PlaybackState.Playing) 8.dp else 4.dp
 
                 Box(
@@ -110,20 +114,10 @@ fun PlayerScreen(
                 ) {
                     if (song.albumArtUri != null) {
                         AsyncImage(
-                            model = ImageRequest.Builder(LocalContext.current)
-                                .data(song.albumArtUri)
-                                .crossfade(true)
-                                .build(),
+                            model = song.albumArtUri,
                             contentDescription = "Album art",
                             modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop,
-                            onSuccess = { result ->
-                                // Extrair cor dominante da imagem
-                                val bitmap = (result.result.drawable as? BitmapDrawable)?.bitmap
-                                bitmap?.let { extractDominantColor(it) { color ->
-                                    dominantColor = color
-                                } }
-                            }
+                            contentScale = ContentScale.Crop
                         )
                     } else {
                         Box(
@@ -148,12 +142,12 @@ fun PlayerScreen(
 
                 Spacer(modifier = Modifier.height(32.dp))
 
-                // Informações da música
+                // Informações
                 Text(
                     text = song.title,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White,
+                    color = textColor,
                     fontSize = 22.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -166,7 +160,7 @@ fun PlayerScreen(
                 Text(
                     text = song.artist,
                     style = MaterialTheme.typography.titleMedium,
-                    color = Color(0xFF8E8E93),
+                    color = secondaryTextColor,
                     fontSize = 18.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -176,7 +170,7 @@ fun PlayerScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Barra de progresso
+                // Progresso
                 Column(modifier = Modifier.fillMaxWidth()) {
                     Slider(
                         value = if (duration > 0) currentPosition.toFloat() / duration else 0f,
@@ -185,9 +179,9 @@ fun PlayerScreen(
                         },
                         modifier = Modifier.fillMaxWidth(),
                         colors = SliderDefaults.colors(
-                            thumbColor = Color.White,
-                            activeTrackColor = Color.White,
-                            inactiveTrackColor = Color(0xFF2C2C2E)
+                            thumbColor = textColor,
+                            activeTrackColor = textColor,
+                            inactiveTrackColor = if (isDarkTheme) Color(0xFF2C2C2E) else Color(0xFFE0E0E0)
                         )
                     )
 
@@ -196,15 +190,15 @@ fun PlayerScreen(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = formatTime(currentPosition),
+                            text = viewModel.formatTime(currentPosition),
                             style = MaterialTheme.typography.labelSmall,
-                            color = Color(0xFF8E8E93),
+                            color = secondaryTextColor,
                             fontSize = 12.sp
                         )
                         Text(
-                            text = formatTime(duration),
+                            text = viewModel.formatTime(duration),
                             style = MaterialTheme.typography.labelSmall,
-                            color = Color(0xFF8E8E93),
+                            color = secondaryTextColor,
                             fontSize = 12.sp
                         )
                     }
@@ -212,7 +206,7 @@ fun PlayerScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Controles principais
+                // Controles
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly,
@@ -222,7 +216,7 @@ fun PlayerScreen(
                         Icon(
                             imageVector = Icons.Default.Shuffle,
                             contentDescription = "Shuffle",
-                            tint = if (isShuffleEnabled) AppleRed else Color(0xFF8E8E93),
+                            tint = if (isShuffleEnabled) AppleRed else secondaryTextColor,
                             modifier = Modifier.size(22.dp)
                         )
                     }
@@ -231,7 +225,7 @@ fun PlayerScreen(
                         Icon(
                             imageVector = Icons.Default.SkipPrevious,
                             contentDescription = "Previous",
-                            tint = Color.White,
+                            tint = textColor,
                             modifier = Modifier.size(32.dp)
                         )
                     }
@@ -239,8 +233,8 @@ fun PlayerScreen(
                     FloatingActionButton(
                         onClick = { viewModel.playPause() },
                         modifier = Modifier.size(64.dp),
-                        containerColor = Color.White,
-                        contentColor = Color.Black,
+                        containerColor = textColor,
+                        contentColor = backgroundColor,
                         shape = CircleShape
                     ) {
                         Icon(
@@ -254,7 +248,7 @@ fun PlayerScreen(
                         Icon(
                             imageVector = Icons.Default.SkipNext,
                             contentDescription = "Next",
-                            tint = Color.White,
+                            tint = textColor,
                             modifier = Modifier.size(32.dp)
                         )
                     }
@@ -268,7 +262,7 @@ fun PlayerScreen(
                             },
                             contentDescription = "Repeat",
                             tint = when (repeatMode) {
-                                RepeatMode.OFF -> Color(0xFF8E8E93)
+                                RepeatMode.OFF -> secondaryTextColor
                                 else -> AppleRed
                             },
                             modifier = Modifier.size(22.dp)
@@ -278,7 +272,7 @@ fun PlayerScreen(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Controles de volume
+                // Volume
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceEvenly,
@@ -288,7 +282,7 @@ fun PlayerScreen(
                         Icon(
                             imageVector = Icons.Default.VolumeDown,
                             contentDescription = "Volume",
-                            tint = Color(0xFF8E8E93),
+                            tint = secondaryTextColor,
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -298,9 +292,9 @@ fun PlayerScreen(
                         onValueChange = { },
                         modifier = Modifier.weight(1f),
                         colors = SliderDefaults.colors(
-                            thumbColor = Color(0xFF8E8E93),
-                            activeTrackColor = Color(0xFF8E8E93),
-                            inactiveTrackColor = Color(0xFF2C2C2E)
+                            thumbColor = secondaryTextColor,
+                            activeTrackColor = secondaryTextColor,
+                            inactiveTrackColor = if (isDarkTheme) Color(0xFF2C2C2E) else Color(0xFFE0E0E0)
                         )
                     )
 
@@ -308,7 +302,7 @@ fun PlayerScreen(
                         Icon(
                             imageVector = Icons.Default.VolumeUp,
                             contentDescription = "Volume",
-                            tint = Color(0xFF8E8E93),
+                            tint = secondaryTextColor,
                             modifier = Modifier.size(20.dp)
                         )
                     }
@@ -319,40 +313,13 @@ fun PlayerScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.MusicNote,
-                            contentDescription = null,
-                            tint = Color(0xFF8E8E93),
-                            modifier = Modifier.size(64.dp)
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = "Nenhuma música tocando",
-                            style = MaterialTheme.typography.titleLarge,
-                            color = Color(0xFF8E8E93)
-                        )
-                    }
+                    Text(
+                        text = "Nenhuma música tocando",
+                        style = MaterialTheme.typography.titleLarge,
+                        color = secondaryTextColor
+                    )
                 }
             }
         }
     }
-}
-
-// Função para extrair cor dominante da imagem
-private fun extractDominantColor(bitmap: Bitmap, onColorExtracted: (Color) -> Unit) {
-    // Simplificado - usa uma cor média
-    val scaledBitmap = Bitmap.createScaledBitmap(bitmap, 1, 1, true)
-    val pixel = scaledBitmap.getPixel(0, 0)
-    val color = Color(pixel)
-    scaledBitmap.recycle()
-    onColorExtracted(color)
-}
-
-private fun formatTime(ms: Long): String {
-    val minutes = ms / 1000 / 60
-    val seconds = ms / 1000 % 60
-    return "%d:%02d".format(minutes, seconds)
 }
