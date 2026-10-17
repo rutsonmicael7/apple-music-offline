@@ -1,5 +1,6 @@
 package com.applemusic.offline.ui.player
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
@@ -51,12 +52,17 @@ fun PlayerScreen(
     // Cor dominante da capa
     var dominantColor by remember { mutableStateOf<Color?>(null) }
 
+    // Interceptar botão voltar do Android
+    BackHandler {
+        onNavigateBack()
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(backgroundColor)
     ) {
-        // Fundo com gradiente baseado na cor da capa
+        // Fundo com gradiente
         dominantColor?.let { color ->
             Box(
                 modifier = Modifier
@@ -77,13 +83,23 @@ fun PlayerScreen(
                 .fillMaxSize()
                 .padding(horizontal = 24.dp)
         ) {
-            // Cabeçalho
-            Box(
+            // Cabeçalho com botão voltar
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 8.dp),
-                contentAlignment = Alignment.Center
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
+                IconButton(onClick = onNavigateBack) {
+                    Icon(
+                        imageVector = Icons.Default.KeyboardArrowDown,
+                        contentDescription = "Voltar",
+                        tint = textColor,
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
+
                 Text(
                     text = "Tocando Agora",
                     style = MaterialTheme.typography.labelMedium,
@@ -91,12 +107,15 @@ fun PlayerScreen(
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium
                 )
+
+                // Espaço para balancear
+                Spacer(modifier = Modifier.width(48.dp))
             }
 
             Spacer(modifier = Modifier.height(20.dp))
 
             currentSong?.let { song ->
-                // Capa do álbum
+                // Capa
                 val elevation = if (playbackState is PlaybackState.Playing) 8.dp else 4.dp
 
                 Box(
@@ -270,43 +289,7 @@ fun PlayerScreen(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Volume
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(onClick = { }) {
-                        Icon(
-                            imageVector = Icons.Default.VolumeDown,
-                            contentDescription = "Volume",
-                            tint = secondaryTextColor,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-
-                    Slider(
-                        value = 0.7f,
-                        onValueChange = { },
-                        modifier = Modifier.weight(1f),
-                        colors = SliderDefaults.colors(
-                            thumbColor = secondaryTextColor,
-                            activeTrackColor = secondaryTextColor,
-                            inactiveTrackColor = if (isDarkTheme) Color(0xFF2C2C2E) else Color(0xFFE0E0E0)
-                        )
-                    )
-
-                    IconButton(onClick = { }) {
-                        Icon(
-                            imageVector = Icons.Default.VolumeUp,
-                            contentDescription = "Volume",
-                            tint = secondaryTextColor,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
+                Spacer(modifier = Modifier.height(32.dp))
 
             } ?: run {
                 Box(
